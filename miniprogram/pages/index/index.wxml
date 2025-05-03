@@ -1,0 +1,65 @@
+<!--index.wxml-->
+<navigation-bar title="拼豆图转换器" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-container">
+
+  <!-- 图片上传区域 -->
+  <view bind:tap="onChooseImage" class="uploader-container">
+    <view class="uploader-content">
+      <image class="uploader-icon" src="/static/upload.png"></image> <!-- 请替换为您的上传图标路径 -->
+      <text class="uploader-text-main">拖放图片到此处，或<text class="uploader-link">点击选择文件</text></text>
+      <text class="uploader-text-sub">支持 JPG, PNG 格式</text>
+    </view>
+  </view>
+
+  <!-- 参数设置区域 -->
+  <view class="card-container">
+    <!-- 横轴格子 -->
+    <view class="setting-item">
+      <text class="setting-label">横轴格子 (10-200):</text>
+      <view class="setting-control input-group">
+        <input class="setting-input" type="number" value="{{gridSize}}" bindinput="onGridSizeInput" maxlength="3" />
+        <button class="setting-button" size="mini" type="primary" bindtap="confirmGridSize">确认</button>
+      </view>
+    </view>
+
+    <!-- 区域颜色合并 -->
+    <view class="setting-item slider-item">
+      <text class="setting-label">区域颜色合并: {{mergeLevel}}</text>
+      <view class="setting-control slider-group">
+          <text class="slider-label-min">少</text>
+          <slider class="setting-slider" value="{{mergeLevel}}" min="1" max="100" bindchange="onMergeLevelChange" show-value="{{false}}" activeColor="#8A2BE2" block-size="20"/>
+          <text class="slider-label-max">多</text>
+      </view>
+    </view>
+
+    <!-- 选择色板 -->
+    <view class="setting-item">
+      <text class="setting-label">选择色板:</text>
+      <view class="setting-control">
+        <picker class="setting-picker" mode="selector" range="{{paletteOptions}}" value="{{paletteIndex}}" bindchange="onPaletteChange">
+          <view class="picker-content">
+            {{paletteOptions[paletteIndex]}}
+            <image class="picker-arrow" src="/images/down-arrow.png"></image> <!-- 请替换为您的下拉箭头图标路径 -->
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 处理模式 -->
+    <view class="setting-item">
+      <text class="setting-label">处理模式:</text>
+       <view class="setting-control">
+        <picker class="setting-picker" mode="selector" range="{{modeOptions}}" value="{{modeIndex}}" bindchange="onModeChange">
+           <view class="picker-content">
+             {{modeOptions[modeIndex]}}
+             <image class="picker-arrow" src="/images/down-arrow.png"></image> <!-- 请替换为您的下拉箭头图标路径 -->
+           </view>
+        </picker>
+      </view>
+    </view>
+  </view>
+  <view class="card-container">
+    <image class="perler-img" src="{{tempFilePath}}"  />
+    <!-- PixelatedPreviewCanvas -->
+  </view>
+</view>

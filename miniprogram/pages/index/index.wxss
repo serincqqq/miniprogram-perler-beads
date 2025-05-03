@@ -1,0 +1,164 @@
+/* General Page Styles */
+.page-container {
+  padding: 20px;
+  background-color: #f8f8f8; /* 页面背景色 */
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Uploader Styles */
+.uploader-container {
+  border: 2px dashed #d9d9d9;
+  border-radius: 8px;
+  padding: 40px 20px;
+  background-color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  text-align: center; /* 文本居中 */
+}
+
+.uploader-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px; /* 内部元素间距 */
+}
+
+.uploader-icon {
+  width: 50px; /* 可根据实际图标调整 */
+  height: 50px;
+  margin-bottom: 10px;
+  opacity: 0.6; /* 图标稍透明 */
+}
+
+.uploader-text-main {
+  font-size: 16px;
+  color: #555;
+}
+
+.uploader-link {
+  color: #409eff; /* 链接颜色 */
+  margin-left: 4px;
+}
+
+.uploader-text-sub {
+  font-size: 12px;
+  color: #999;
+}
+
+/* Settings Container Styles */
+.card-container {
+  background-color: #fff;
+  padding: 20px;
+  margin: 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1); /* 添加阴影 */
+}
+/* .perler-img{
+  background-color: #555;
+} */
+.setting-item {
+  display: flex;
+  align-items: center; /* 垂直居中 */
+  margin-bottom: 25px; /* 设置项之间的间距 */
+  flex-wrap: wrap; /* 允许换行 */
+  gap: 10px; /* Label 和 Control 之间的间距 */
+}
+
+.setting-item:last-child {
+  margin-bottom: 0; /* 最后一个设置项无下边距 */
+}
+
+.setting-label {
+  font-size: 14px;
+  color: #606266;
+  flex-shrink: 0; /* 防止标签被压缩 */
+  text-align: right; /* 标签文本右对齐 */
+  padding-right: 10px; /* 标签和控件间距 */
+}
+
+.setting-control {
+  flex-grow: 1; /* 控件占据剩余空间 */
+  display: flex;
+  align-items: center;
+}
+
+/* Input Group Styles */
+.input-group {
+  display: flex;
+  align-items: center;
+  width: 100%; /* 输入框组占满控制区域 */
+}
+
+.setting-input {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 0 10px; /* 调整内边距 */
+  font-size: 14px;
+  flex-grow: 1; /* 输入框占据大部分空间 */
+  margin-right: 10px;
+  min-width: 50px;
+  height: 32px; /* 明确高度 */
+  line-height: 32px;
+  box-sizing: border-box;
+}
+
+.setting-button {
+  /* 微信 button[size=mini] 默认样式已适配 */
+  /* 确保高度一致 */
+  height: 32px;
+  line-height: 32px;
+  padding: 0 15px; /* 调整mini按钮的左右边距 */
+}
+
+/* Slider Styles */
+
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px; /* 元素间距 */
+}
+
+.setting-slider {
+  flex-grow: 1;
+  margin: 0 5px; /* 给滑块左右一点空间 */
+}
+
+.slider-label-min,
+.slider-label-max {
+  font-size: 12px;
+  color: #909399;
+  width: 20px; /* 固定宽度便于对齐 */
+  text-align: center;
+}
+
+/* Picker Styles */
+.setting-picker {
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 0 10px; /* 左右内边距 */
+  font-size: 14px;
+  background-color: #fff;
+  width: 100%;
+  height: 32px; /* 与输入框高度一致 */
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+}
+
+.picker-content {
+  display: flex;
+  justify-content: space-between; /* 内容两端对齐 */
+  align-items: center;
+  width: 100%;
+}
+
+.picker-arrow {
+  width: 12px;
+  height: 12px;
+  opacity: 0.6;
+}
