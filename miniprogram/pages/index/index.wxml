@@ -3,9 +3,9 @@
 <view class="page-container">
 
   <!-- 图片上传区域 -->
-  <view bind:tap="onChooseImage" class="uploader-container">
+  <view bind:tap="chooseImage" class="uploader-container">
     <view class="uploader-content">
-      <image class="uploader-icon" src="/static/upload.png"></image> <!-- 请替换为您的上传图标路径 -->
+      <image class="uploader-icon" src="/static/upload.png"></image> 
       <text class="uploader-text-main">拖放图片到此处，或<text class="uploader-link">点击选择文件</text></text>
       <text class="uploader-text-sub">支持 JPG, PNG 格式</text>
     </view>
@@ -39,7 +39,7 @@
         <picker class="setting-picker" mode="selector" range="{{paletteOptions}}" value="{{paletteIndex}}" bindchange="onPaletteChange">
           <view class="picker-content">
             {{paletteOptions[paletteIndex]}}
-            <image class="picker-arrow" src="/images/down-arrow.png"></image> <!-- 请替换为您的下拉箭头图标路径 -->
+            <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image> -->
           </view>
         </picker>
       </view>
@@ -52,14 +52,13 @@
         <picker class="setting-picker" mode="selector" range="{{modeOptions}}" value="{{modeIndex}}" bindchange="onModeChange">
            <view class="picker-content">
              {{modeOptions[modeIndex]}}
-             <image class="picker-arrow" src="/images/down-arrow.png"></image> <!-- 请替换为您的下拉箭头图标路径 -->
+             <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image>  -->
            </view>
         </picker>
       </view>
     </view>
   </view>
-  <view class="card-container">
-    <image class="perler-img" src="{{tempFilePath}}"  />
-    <!-- PixelatedPreviewCanvas -->
+  <view class="result-container card-container">
+    <canvas id="previewCanvas" canvas-id="previewCanvasId" type="2d"  style="width: 300px; height: 300px; border: 1px solid #eee;"></canvas>
   </view>
 </view>
