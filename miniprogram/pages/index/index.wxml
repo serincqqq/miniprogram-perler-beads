@@ -5,7 +5,7 @@
   <!-- 图片上传区域 -->
   <view bind:tap="chooseImage" class="uploader-container">
     <view class="uploader-content">
-      <image class="uploader-icon" src="/static/upload.png"></image> 
+      <image class="uploader-icon" src="/static/upload.png"></image>
       <text class="uploader-text-main">拖放图片到此处，或<text class="uploader-link">点击选择文件</text></text>
       <text class="uploader-text-sub">支持 JPG, PNG 格式</text>
     </view>
@@ -26,9 +26,9 @@
     <view class="setting-item slider-item">
       <text class="setting-label">区域颜色合并: {{mergeLevel}}</text>
       <view class="setting-control slider-group">
-          <text class="slider-label-min">少</text>
-          <slider class="setting-slider" value="{{mergeLevel}}" min="1" max="100" bindchange="onMergeLevelChange" show-value="{{false}}" activeColor="#8A2BE2" block-size="20"/>
-          <text class="slider-label-max">多</text>
+        <text class="slider-label-min">少</text>
+        <slider class="setting-slider" value="{{mergeLevel}}" min="1" max="100" bindchange="onMergeLevelChange" show-value="{{false}}" activeColor="#8A2BE2" block-size="20" />
+        <text class="slider-label-max">多</text>
       </view>
     </view>
 
@@ -48,17 +48,20 @@
     <!-- 处理模式 -->
     <view class="setting-item">
       <text class="setting-label">处理模式:</text>
-       <view class="setting-control">
+      <view class="setting-control">
         <picker class="setting-picker" mode="selector" range="{{modeOptions}}" value="{{modeIndex}}" bindchange="onModeChange">
-           <view class="picker-content">
-             {{modeOptions[modeIndex]}}
-             <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image>  -->
-           </view>
+          <view class="picker-content">
+            {{modeOptions[modeIndex]}}
+            <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image>  -->
+          </view>
         </picker>
       </view>
     </view>
   </view>
-  <view class="result-container card-container">
-    <canvas id="previewCanvas" canvas-id="previewCanvasId" type="2d"  style="width: 300px; height: 300px; border: 1px solid #eee;"></canvas>
+  <view class="result-container">
+    <!-- wx:if 控制显示，style 控制尺寸 -->
+    <canvas wx:if="{{imagePath}}" id="previewCanvas" type="2d" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
+    <!-- 可以加一个图片未选择时的提示 -->
+    <view wx:else class="placeholder-text">请先选择图片</view>
   </view>
 </view>
