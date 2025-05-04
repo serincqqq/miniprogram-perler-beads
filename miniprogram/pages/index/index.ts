@@ -26,6 +26,16 @@ Component({
     hasUserInfo: false,
     canIUseGetUserProfile: wx.canIUse('getUserProfile'),
     canIUseNicknameComp: wx.canIUse('input.type.nickname'),
+
+    // 校准弹窗相关
+    showCalibrationModal: false,     // 是否显示校准弹窗
+    calibrationImg: '',              // 校准弹窗中显示的图片
+    // 轴线位置 (百分比值0-100)
+    leftAxis: 25,                    // 左侧垂直轴位置
+    rightAxis: 35,                   // 右侧垂直轴位置
+    topAxis: 25,                     // 顶部水平轴位置
+    bottomAxis: 35,                  // 底部水平轴位置
+    isMovingAxis: '',                // 当前正在移动的轴 ('left'/'right'/'top'/'bottom')
   },
 
   // Canvas 和 context 作为组件实例的属性
@@ -87,43 +97,17 @@ Component({
         success: (res) => {
           const tempFilePath = res.tempFiles[0].tempFilePath;
 
-          wx.getImageInfo({
-            src: tempFilePath,
-            success: (imgRes) => {
-              const imgWidth = imgRes.width;
-              const imgHeight = imgRes.height;
-              const query = wx.createSelectorQuery().in(this);
-              query.select('.result-container').boundingClientRect((containerRes) => {
-                if (!containerRes) {
-                  wx.showToast({ title: '无法获取容器尺寸', icon: 'none' });
-                  return;
-                }
-                const containerWidth = containerRes.width;
-                const calculatedCanvasHeight = containerWidth * (imgHeight / imgWidth);
-
-                this.setData({
-                  tempFilePath: tempFilePath,
-                  imagePath: tempFilePath,
-                  canvasWidth: containerWidth,
-                  canvasHeight: calculatedCanvasHeight,
-                  // 重置网格状态
-                  gridOffsetX: 0,
-                  gridOffsetY: 0
-                }, () => {
-                  setTimeout(() => {
-                    if (this.canvas && this.ctx) {
-                      this.updateCanvasSize();
-                    } else {
-                      this.initializeCanvas();
-                    }
-                  }, 150);
-                });
-              }).exec();
-            },
-            fail: (err) => {
-              console.error('获取图片信息失败:', err);
-              wx.showToast({ title: '图片信息获取失败', icon: 'none' });
-            }
+          // 首先设置临时文件路径，以便显示在弹窗中
+          this.setData({
+            tempFilePath: tempFilePath,
+            calibrationImg: tempFilePath,
+            // 重置轴线位置
+            leftAxis: 25,
+            rightAxis: 35,
+            topAxis: 25,
+            bottomAxis: 35,
+            // 显示校准弹窗
+            showCalibrationModal: true
           });
         },
         fail: (err) => {
@@ -326,21 +310,26 @@ Component({
       }
 
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)'; // 红色网格线，更醒目
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)';
       ctx.lineWidth = 1 / this.dpr;
 
+      // 强制对齐到物理像素
+      const alignToPixel = (value: number) => Math.round(value * this.dpr) / this.dpr;
+
       // 绘制垂直线
-      const startX = gridOffsetX % gridCellWidth;
+      const startX = alignToPixel(gridOffsetX % gridCellWidth);
       for (let x = startX; x < canvasWidth; x += gridCellWidth) {
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvasHeight);
+        const alignedX = alignToPixel(x);
+        ctx.moveTo(alignedX, 0);
+        ctx.lineTo(alignedX, canvasHeight);
       }
 
       // 绘制水平线
-      const startY = gridOffsetY % gridCellHeight;
+      const startY = alignToPixel(gridOffsetY % gridCellHeight);
       for (let y = startY; y < canvasHeight; y += gridCellHeight) {
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvasWidth, y);
+        const alignedY = alignToPixel(y);
+        ctx.moveTo(0, alignedY);
+        ctx.lineTo(canvasWidth, alignedY);
       }
 
       ctx.stroke();
@@ -435,6 +424,145 @@ Component({
         }
       });
     },
+
+    // 关闭校准弹窗
+    closeCalibrationModal() {
+      this.setData({
+        showCalibrationModal: false
+      });
+    },
+
+    // 应用校准结果
+    applyCalibration() {
+      if (!this.data.tempFilePath) return;
+      
+      // 计算选择的单元格的宽度和高度（百分比）
+      const cellWidthPercent = this.data.rightAxis - this.data.leftAxis;
+      const cellHeightPercent = this.data.bottomAxis - this.data.topAxis;
+      
+      if (cellWidthPercent <= 0 || cellHeightPercent <= 0) {
+        wx.showToast({ 
+          title: '请正确框选单元格', 
+          icon: 'none' 
+        });
+        return;
+      }
+      
+      // 获取图片信息
+      wx.getImageInfo({
+        src: this.data.tempFilePath,
+        success: (imgRes) => {
+          const imgWidth = imgRes.width;
+          const imgHeight = imgRes.height;
+          
+          // 根据选择的单元格计算图片应该有多少列和行
+          // 选择的单元格宽度在整个图片中的实际像素值
+          const selectedCellWidthPx = (cellWidthPercent / 100) * imgWidth;
+          const selectedCellHeightPx = (cellHeightPercent / 100) * imgHeight;
+          
+          // 计算图片应有的总列数和行数
+          const totalCols = Math.round(imgWidth / selectedCellWidthPx);
+          const totalRows = Math.round(imgHeight / selectedCellHeightPx);
+          
+          console.log(`计算得到的单元格尺寸: ${selectedCellWidthPx}x${selectedCellHeightPx}像素`);
+          console.log(`总列数: ${totalCols}, 总行数: ${totalRows}`);
+          
+          // 查询容器大小以设置Canvas尺寸
+          const query = wx.createSelectorQuery().in(this);
+          query.select('.result-container').boundingClientRect((containerRes) => {
+            if (!containerRes) {
+              wx.showToast({ title: '无法获取容器尺寸', icon: 'none' });
+              return;
+            }
+            const containerWidth = containerRes.width;
+            const calculatedCanvasHeight = containerWidth * (imgHeight / imgWidth);
+            
+            // 设置画布尺寸和图片
+            this.setData({
+              imagePath: this.data.tempFilePath,
+              canvasWidth: containerWidth,
+              canvasHeight: calculatedCanvasHeight,
+              // 使用计算得到的单元格数作为网格参数
+              confirmedGridSize: totalCols,
+              gridCellWidth: containerWidth / totalCols,
+              gridCellHeight: calculatedCanvasHeight / totalRows,
+              gridOffsetX: 0,
+              gridOffsetY: 0,
+              // 关闭校准弹窗
+              showCalibrationModal: false
+            }, () => {
+              // 延时确保DOM更新
+              setTimeout(() => {
+                if (this.canvas && this.ctx) {
+                  this.updateCanvasSize();
+                } else {
+                  this.initializeCanvas();
+                }
+                wx.showToast({ 
+                  title: '校准完成，已生成网格', 
+                  icon: 'success' 
+                });
+              }, 150);
+            });
+          }).exec();
+        },
+        fail: (err) => {
+          console.error('获取图片信息失败:', err);
+          wx.showToast({ title: '图片信息获取失败', icon: 'none' });
+        }
+      });
+    },
+
+    // 开始移动轴线
+    startMoveAxis(e) {
+      const axis = e.currentTarget.dataset.axis;
+      this.setData({ isMovingAxis: axis });
+    },
+
+    // 停止移动轴线
+    stopMoveAxis() {
+      this.setData({ isMovingAxis: '' });
+    },
+
+    // 移动轴线
+    moveAxis(e) {
+      const { isMovingAxis } = this.data;
+      if (!isMovingAxis) return;
+      
+      const { clientX, clientY } = e.touches[0];
+      
+      // 获取校准图片容器的位置和尺寸
+      const query = wx.createSelectorQuery().in(this);
+      query.select('.calibration-image-container').boundingClientRect(rect => {
+        if (!rect) return;
+        
+        const { left, top, width, height } = rect;
+        
+        // 计算触摸点相对于图片容器的百分比位置
+        let percentX = ((clientX - left) / width) * 100;
+        let percentY = ((clientY - top) / height) * 100;
+        
+        // 限制在0-100范围内
+        percentX = Math.max(0, Math.min(100, percentX));
+        percentY = Math.max(0, Math.min(100, percentY));
+        
+        // 根据当前移动的轴更新位置
+        const data: any = {};
+        
+        if (isMovingAxis === 'left') {
+          data.leftAxis = Math.min(percentX, this.data.rightAxis - 1);
+        } else if (isMovingAxis === 'right') {
+          data.rightAxis = Math.max(percentX, this.data.leftAxis + 1);
+        } else if (isMovingAxis === 'top') {
+          data.topAxis = Math.min(percentY, this.data.bottomAxis - 1);
+        } else if (isMovingAxis === 'bottom') {
+          data.bottomAxis = Math.max(percentY, this.data.topAxis + 1);
+        }
+        
+        this.setData(data);
+      }).exec();
+    },
+
     exportImg() {
       const query = wx.createSelectorQuery().in(this);
       query.select('#previewCanvas').fields({ node: true, size: true }).exec((res) => {
