@@ -3,7 +3,7 @@
 <view class="page-container">
 
   <!-- 图片上传区域 -->
-  <view bind:tap="chooseImage" class="uploader-container">
+  <view bind:tap="onChooseImage" class="uploader-container">
     <view class="uploader-content">
       <image class="uploader-icon" src="/static/upload.png"></image>
       <text class="uploader-text-main">拖放图片到此处，或<text class="uploader-link">点击选择文件</text></text>
@@ -64,4 +64,36 @@
     <!-- 可以加一个图片未选择时的提示 -->
     <view wx:else class="placeholder-text">请先选择图片</view>
   </view>
+
+  <!-- 网格控制面板 -->
+  <view wx:if="{{tempFilePath}}" class="grid-controls">
+    <view class="control-section">
+      <text class="section-title">网格大小调整</text>
+      <view class="button-row">
+        <button size="mini" bindtap="decreaseGridSize" class="control-button">缩小网格</button>
+        <button size="mini" bindtap="increaseGridSize" class="control-button">放大网格</button>
+      </view>
+    </view>
+
+    <view class="control-section">
+      <text class="section-title">网格位置调整</text>
+      <view class="direction-controls">
+        <!-- 上按钮 -->
+        <button size="mini" bindtap="moveGridUp" class="direction-button">↑</button>
+
+        <!-- 左、右按钮 -->
+        <view class="horizontal-buttons">
+          <button size="mini" bindtap="moveGridLeft" class="direction-button">←</button>
+          <button size="mini" bindtap="moveGridRight" class="direction-button">→</button>
+        </view>
+
+        <!-- 下按钮 -->
+        <button size="mini" bindtap="moveGridDown" class="direction-button">↓</button>
+      </view>
+    </view>
+
+    <button size="mini" bindtap="resetGrid" class="reset-button">重置网格</button>
+    <button class="setting-button" size="mini" type="primary" bindtap="exportImg">导出</button>
+  </view>
+
 </view>

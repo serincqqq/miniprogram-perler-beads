@@ -3,265 +3,468 @@
 type Canvas = any; // 替换为正确导入的类型，或使用 any
 type RenderingContext = any; // 替换为正确导入的类型，或使用 any
 
-Page({
+Component({
   data: {
-    // 初始化 imagePath 为空
+    tempFilePath: '',
+    gridSize: 52,
+    confirmedGridSize: 52,
+    mergeLevel: 30,
+    paletteOptions: ['全色系291色', '简化色系100色'],
+    paletteIndex: 0,
+    modeOptions: ['卡通 (主色)', '写实 (细节优先)'],
+    modeIndex: 0,
+    canvasWidth: 300,
+    canvasHeight: 300,
     imagePath: '',
-    canvasWidth: 0, // 初始宽度为 0
-    canvasHeight: 0, // 初始高度为 0
-    // --- 恢复使用用户输入的格子数 ---
-    confirmedGridSize: 32, // 提供一个更合理的像素画默认值
-    gridSize: 24,         // 临时输入值
+
+    // 新增：网格调整参数
+    gridCellWidth: 15,    // 网格单元格宽度（像素）
+    gridCellHeight: 15,   // 网格单元格高度（像素）
+    gridOffsetX: 0,       // 网格X偏移量
+    gridOffsetY: 0,       // 网格Y偏移量
+
+    hasUserInfo: false,
+    canIUseGetUserProfile: wx.canIUse('getUserProfile'),
+    canIUseNicknameComp: wx.canIUse('input.type.nickname'),
   },
 
-  // --- 恢复 onGridSizeInput 和 confirmGridSize ---
-  onGridSizeInput(e: WechatMiniprogram.Input) {
-    let value = parseInt(e.detail.value, 10);
-    if (isNaN(value)) {
-      value = this.data.confirmedGridSize;
-    } else if (value < 1) {
-      value = 1;
-    } else if (value > 200) { // 可以根据需要调整上限
-      value = 200;
+  // Canvas 和 context 作为组件实例的属性
+  canvas: null as Canvas | null,
+  ctx: null as RenderingContext | null,
+  dpr: 1,
+
+  lifetimes: {
+    attached() {
+      this.dpr = wx.getSystemInfoSync().pixelRatio || 1;
+    },
+
+    ready() {
+      // 在组件就绪后预初始化Canvas
+      setTimeout(() => {
+        this.preInitializeCanvas();
+      }, 100);
     }
-    this.setData({ gridSize: value });
-    return value.toString();
   },
 
-  // 确认格子数后，如果已有图片则重绘
-  confirmGridSize() {
-    this.setData({ confirmedGridSize: this.data.gridSize }, () => {
-      if (this.data.imagePath) { // 仅在有图时重绘
-        wx.nextTick(() => {
-          this.initializeAndDrawCanvas(); // 使用新的 confirmedGridSize 重新绘制
-        });
-      }
-      wx.showToast({ title: '格子数已确认', icon: 'success', duration: 1000 });
-    });
-  },
-
-  // 选择图片
-  chooseImage() {
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
-        const tempFilePath = res.tempFiles[0].tempFilePath;
-
-        // 1. 获取图片信息
-        wx.getImageInfo({
-          src: tempFilePath,
-          success: (imgRes) => {
-            const imgWidth = imgRes.width;
-            const imgHeight = imgRes.height;
-
-            // 2. 获取容器宽度
-            const query = wx.createSelectorQuery().in(this); // 在 Page 中使用 .in(this) 或省略
-            query.select('.result-container').boundingClientRect((containerRes) => {
-              if (!containerRes) {
-                wx.showToast({ title: '无法获取容器尺寸', icon: 'none' });
-                return;
-              }
-              const containerWidth = containerRes.width;
-
-              // 3. 计算画布高度以保持比例
-              const calculatedCanvasHeight = containerWidth * (imgHeight / imgWidth);
-
-              // 4. 更新数据，触发 WXML 渲染 Canvas
-              this.setData({
-                imagePath: tempFilePath,
-                canvasWidth: containerWidth, // 画布逻辑宽度等于容器宽度
-                canvasHeight: calculatedCanvasHeight // 计算得到的高度
-              }, () => {
-                // 5. 在 WXML 更新后，初始化并绘制 Canvas
-                wx.nextTick(() => {
-                  // 调用初始化绘制，使用 data 中当前的 confirmedGridSize
-                  this.initializeAndDrawCanvas();
-                });
-              });
-
-            }).exec(); // 执行查询
-          },
-          fail: (err) => {
-            console.error('获取图片信息失败:', err);
-            wx.showToast({ title: '图片信息获取失败', icon: 'none' });
-          }
-        });
-      },
-      fail: (err) => {
-        console.error('选择图片失败:', err);
-        if (err.errMsg !== "chooseMedia:fail cancel") {
-          wx.showToast({ title: '选择图片失败', icon: 'none' });
+  methods: {
+    // 预先初始化Canvas
+    preInitializeCanvas() {
+      const query = wx.createSelectorQuery().in(this);
+      query.select('#previewCanvas').fields({ node: true }).exec((res) => {
+        if (!res || !res[0] || !res[0].node) {
+          console.log('预初始化Canvas: 节点暂未准备好，将在选择图片后重试');
+          return;
         }
-      }
-    });
-  },
 
-  // 初始化并绘制 Canvas (核心修改)
-  initializeAndDrawCanvas() {
-    const query = wx.createSelectorQuery().in(this);
-    query.select('#previewCanvas').fields({ node: true }).exec((res) => {
-      if (!res || !res[0] || !res[0].node) {
-        console.error('Canvas 节点获取失败:', res);
-        // 此时 canvas 应该已存在，如果失败可能是其他问题
-        wx.showToast({ title: 'Canvas 初始化失败', icon: 'none' });
+        console.log('预初始化Canvas: 节点已找到');
+        this.canvas = res[0].node;
+        this.ctx = this.canvas.getContext('2d');
+
+        if (!this.ctx) {
+          console.error('预初始化Canvas: 获取2D上下文失败');
+          this.canvas = null;
+          return;
+        }
+
+        // 设置初始尺寸
+        this.canvas.width = this.data.canvasWidth * this.dpr;
+        this.canvas.height = this.data.canvasHeight * this.dpr;
+        this.ctx.scale(this.dpr, this.dpr);
+      });
+    },
+
+    // 事件处理函数
+    onChooseImage() {
+      // 选择图片前，确保Canvas已经初始化
+      if (!this.canvas || !this.ctx) {
+        this.preInitializeCanvas();
+      }
+
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          const tempFilePath = res.tempFiles[0].tempFilePath;
+
+          wx.getImageInfo({
+            src: tempFilePath,
+            success: (imgRes) => {
+              const imgWidth = imgRes.width;
+              const imgHeight = imgRes.height;
+              const query = wx.createSelectorQuery().in(this);
+              query.select('.result-container').boundingClientRect((containerRes) => {
+                if (!containerRes) {
+                  wx.showToast({ title: '无法获取容器尺寸', icon: 'none' });
+                  return;
+                }
+                const containerWidth = containerRes.width;
+                const calculatedCanvasHeight = containerWidth * (imgHeight / imgWidth);
+
+                this.setData({
+                  tempFilePath: tempFilePath,
+                  imagePath: tempFilePath,
+                  canvasWidth: containerWidth,
+                  canvasHeight: calculatedCanvasHeight,
+                  // 重置网格状态
+                  gridOffsetX: 0,
+                  gridOffsetY: 0
+                }, () => {
+                  setTimeout(() => {
+                    if (this.canvas && this.ctx) {
+                      this.updateCanvasSize();
+                    } else {
+                      this.initializeCanvas();
+                    }
+                  }, 150);
+                });
+              }).exec();
+            },
+            fail: (err) => {
+              console.error('获取图片信息失败:', err);
+              wx.showToast({ title: '图片信息获取失败', icon: 'none' });
+            }
+          });
+        },
+        fail: (err) => {
+          console.error('选择图片失败:', err);
+          if (err.errMsg !== "chooseMedia:fail cancel") {
+            wx.showToast({ title: '选择图片失败', icon: 'none' });
+          }
+        }
+      });
+    },
+
+    onGridSizeInput(e: WechatMiniprogram.Input) {
+      let value = parseInt(e.detail.value, 10);
+      if (isNaN(value)) {
+        value = this.data.confirmedGridSize;
+      } else if (value < 10) {
+        value = 10;
+      } else if (value > 200) {
+        value = 200;
+      }
+      this.setData({ gridSize: value });
+      return value.toString();
+    },
+
+    confirmGridSize() {
+      this.setData({ confirmedGridSize: this.data.gridSize }, () => {
+        if (this.data.tempFilePath) {
+          // 使用用户输入的网格数重新计算网格尺寸
+          const { canvasWidth, canvasHeight, confirmedGridSize } = this.data;
+
+          // 获取图片计算比例
+          wx.getImageInfo({
+            src: this.data.tempFilePath,
+            success: (imgRes) => {
+              const imgWidth = imgRes.width;
+              const imgHeight = imgRes.height;
+
+              // 根据确认的网格数设置网格大小
+              const gridCellWidth = canvasWidth / confirmedGridSize;
+              const numVerticalGrids = confirmedGridSize * (imgHeight / imgWidth);
+              const gridCellHeight = canvasHeight / numVerticalGrids;
+
+              this.setData({
+                gridCellWidth: gridCellWidth,
+                gridCellHeight: gridCellHeight,
+                // 重置偏移，回到原点
+                gridOffsetX: 0,
+                gridOffsetY: 0
+              }, this.redrawCanvas);
+            }
+          });
+        }
+        wx.showToast({ title: '格子数已确认', icon: 'success', duration: 1000 });
+      });
+    },
+
+    onMergeLevelChange(e: WechatMiniprogram.SliderChange) {
+      this.setData({ mergeLevel: e.detail.value });
+    },
+
+    onPaletteChange(e: WechatMiniprogram.PickerChange) {
+      this.setData({ paletteIndex: parseInt(e.detail.value as string, 10) });
+    },
+
+    onModeChange(e: WechatMiniprogram.PickerChange) {
+      this.setData({ modeIndex: parseInt(e.detail.value as string, 10) });
+    },
+
+    // 更新Canvas尺寸和绘制
+    updateCanvasSize() {
+      if (!this.canvas || !this.ctx) {
+        console.error('updateCanvasSize: Canvas未初始化');
+        this.initializeCanvas();
         return;
       }
-      const canvas = res[0].node as Canvas;
-      const ctx = canvas.getContext('2d') as RenderingContext;
-      const dpr = wx.getSystemInfoSync().pixelRatio;
-      // --- 获取用户确认的格子数 ---
-      const { canvasWidth, canvasHeight, imagePath, confirmedGridSize } = this.data;
 
-      if (!imagePath || confirmedGridSize <= 0) {
-        console.error("无法绘制：图片路径为空或确认的格子数无效");
-        return;
-      }
+      // 更新Canvas物理尺寸
+      this.canvas.width = this.data.canvasWidth * this.dpr;
+      this.canvas.height = this.data.canvasHeight * this.dpr;
+      this.ctx.scale(this.dpr, this.dpr);
 
-      // --- 关键：禁用图像平滑 ---
-      ctx.imageSmoothingEnabled = false;
+      console.log('Canvas尺寸已更新');
 
-      // 设置 Canvas 物理尺寸
-      canvas.width = canvasWidth * dpr;
-      canvas.height = canvasHeight * dpr;
-      ctx.scale(dpr, dpr);
+      // 计算初始网格尺寸
+      const { canvasWidth, canvasHeight, confirmedGridSize, tempFilePath } = this.data;
 
-      // --- 获取图片的原始宽高比，用于计算垂直格子数 ---
       wx.getImageInfo({
-        src: imagePath,
+        src: tempFilePath,
         success: (imgRes) => {
           const imgWidth = imgRes.width;
           const imgHeight = imgRes.height;
 
-          if (imgWidth <= 0 || imgHeight <= 0) {
-            console.error("图片原始尺寸无效:", imgWidth, imgHeight);
-            wx.showToast({ title: '图片尺寸无效', icon: 'none' });
-            return;
-          }
-
-          // --- 计算格子尺寸基于 confirmedGridSize ---
-          const gridPixelWidth = canvasWidth / confirmedGridSize;
-          // 计算垂直方向应有的格子数 (保持图片比例)
+          // 计算网格尺寸
+          const gridCellWidth = canvasWidth / confirmedGridSize;
           const numVerticalGrids = confirmedGridSize * (imgHeight / imgWidth);
-          // 计算垂直格子高度
-          const gridPixelHeight = canvasHeight / numVerticalGrids;
+          const gridCellHeight = canvasHeight / numVerticalGrids;
 
-          console.log(`Using confirmedGridSize=${confirmedGridSize}`);
-          console.log(`Calculated Grid Size: gridW=${gridPixelWidth.toFixed(2)}, gridH=${gridPixelHeight.toFixed(2)}`);
-          console.log(`Calculated Vertical Grids: ${numVerticalGrids.toFixed(2)}`);
-
-          // 先绘制图片
-          this.drawImage(canvas, ctx, canvasWidth, canvasHeight, () => {
-            console.log('drawImage callback executed. Drawing grid and numbers based on user grid size.');
-            // 使用计算出的格子尺寸和行列数绘制
-            // 注意：行列数现在是 confirmedGridSize 和 numVerticalGrids
-            this.drawGridLines(ctx, canvasWidth, canvasHeight, gridPixelWidth, gridPixelHeight, confirmedGridSize, numVerticalGrids);
-            // this.addNumbersToGrid(ctx, canvasWidth, canvasHeight, gridPixelWidth, gridPixelHeight, confirmedGridSize, numVerticalGrids);
-          });
-        },
-        fail: (err) => {
-          console.error("获取图片信息失败，无法绘制精确网格:", err);
-          wx.showToast({ title: '无法读取图片尺寸', icon: 'none' });
-          this.drawImage(canvas, ctx, canvasWidth, canvasHeight); // 仍尝试绘制图片
+          this.setData({
+            gridCellWidth: gridCellWidth,
+            gridCellHeight: gridCellHeight
+          }, this.redrawCanvas);
         }
       });
-    });
-  },
+    },
 
-  // 绘制图片 (添加平滑禁用)
-  drawImage(canvas: Canvas, ctx: RenderingContext, width: number, height: number, callback?: () => void) {
-    const img = canvas.createImage();
-    img.src = this.data.imagePath;
-    img.onload = () => {
-      // console.log("drawImage: img.onload triggered.");
-      ctx.clearRect(0, 0, width, height);
-      // --- 再次确保绘制图片时禁用平滑 ---
-      const currentSmoothing = ctx.imageSmoothingEnabled;
-      ctx.imageSmoothingEnabled = false; // 禁用
-      ctx.drawImage(img, 0, 0, width, height);
-      ctx.imageSmoothingEnabled = currentSmoothing; // 恢复
+    // 初始化Canvas
+    initializeCanvas() {
+      console.log('尝试初始化Canvas...');
+      const query = wx.createSelectorQuery().in(this);
+      query.select('#previewCanvas').fields({ node: true }).exec((res) => {
+        if (!res || !res[0] || !res[0].node) {
+          console.error('initializeCanvas: Canvas节点未找到');
+          wx.showToast({ title: '绘图初始化失败，请重试', icon: 'none' });
+          this.canvas = null;
+          this.ctx = null;
+          return;
+        }
+        this.canvas = res[0].node;
+        this.ctx = this.canvas.getContext('2d');
 
-      if (callback) {
-        // console.log("drawImage: Executing callback...");
-        callback();
+        if (!this.ctx) {
+          console.error('initializeCanvas: 获取2D上下文失败');
+          this.canvas = null;
+          return;
+        }
+
+        this.canvas.width = this.data.canvasWidth * this.dpr;
+        this.canvas.height = this.data.canvasHeight * this.dpr;
+        this.ctx.scale(this.dpr, this.dpr);
+
+        console.log('Canvas初始化完成');
+        this.updateCanvasSize();
+      });
+    },
+
+    // 重绘Canvas
+    redrawCanvas() {
+      if (!this.ctx || !this.canvas) {
+        console.warn('redrawCanvas: Canvas未准备好，跳过绘制');
+        return;
       }
-    };
-    img.onerror = (err: any) => {
-      console.error("图片加载失败:", err);
-      wx.showToast({ title: '图片加载失败', icon: 'none' });
-    };
-  },
 
-  // 绘制网格线 (接收格子宽高和计算出的行列数)
-  // 注意：传入的 numCols 和 numRows 可能不是整数
-  drawGridLines(ctx: RenderingContext, width: number, height: number, gridW: number, gridH: number, numCols: number, numRows: number) {
-    // console.log(`Entering drawGridLines: gridW=${gridW.toFixed(2)}, gridH=${gridH.toFixed(2)}, cols=${numCols.toFixed(2)}, rows=${numRows.toFixed(2)}`);
-    // 调整判断条件，因为现在 gridW/gridH 可能较大
-    if (gridW < 0.5 || gridH < 0.5) { // 可以设置一个更小的阈值，比如 0.5 像素
-      console.warn("drawGridLines: Calculated grid dimensions too small, skipping.", gridW, gridH);
-      return;
-    }
+      const ctx = this.ctx;
+      const { canvasWidth, canvasHeight, tempFilePath } = this.data;
 
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(0, 0, 0,1)';
-    const dpr = wx.getSystemInfoSync().pixelRatio || 1;
-    ctx.lineWidth = 1 / dpr;
+      // 清除画布
+      ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    // 绘制垂直线，使用 Math.ceil 确保覆盖边缘
-    const colsToDraw = Math.ceil(numCols);
-    for (let i = 1; i < colsToDraw; i++) { // 画内部线
-      const x = i * gridW;
-      if (x <= width) { // 避免超出画布
+      // 绘制图像
+      if (tempFilePath) {
+        this.drawImage(() => {
+          // 绘制网格
+          this.drawAdjustableGrid();
+        });
+      }
+    },
+
+    // 绘制图像
+    drawImage(callback?: () => void) {
+      if (!this.ctx || !this.canvas || !this.data.tempFilePath) {
+        if (callback) callback();
+        return;
+      }
+
+      const ctx = this.ctx;
+      const { canvasWidth, canvasHeight, tempFilePath } = this.data;
+
+      const img = this.canvas.createImage();
+      img.src = tempFilePath;
+      img.onload = () => {
+        // 禁用图像平滑，保持像素清晰
+        const currentSmoothing = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = false;
+
+        // 绘制图像
+        ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+
+        // 恢复图像平滑设置
+        ctx.imageSmoothingEnabled = currentSmoothing;
+
+        if (callback) callback();
+      };
+      img.onerror = (err: any) => {
+        console.error("图片加载失败:", err);
+        wx.showToast({ title: '图片加载失败', icon: 'none' });
+        if (callback) callback();
+      };
+    },
+
+    // 绘制可调整网格
+    drawAdjustableGrid() {
+      if (!this.ctx) return;
+
+      const ctx = this.ctx;
+      const { canvasWidth, canvasHeight, gridCellWidth, gridCellHeight, gridOffsetX, gridOffsetY } = this.data;
+
+      if (gridCellWidth < 0.5 || gridCellHeight < 0.5) {
+        console.warn("网格尺寸过小，跳过网格绘制");
+        return;
+      }
+
+      ctx.beginPath();
+      ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)'; // 红色网格线，更醒目
+      ctx.lineWidth = 1 / this.dpr;
+
+      // 绘制垂直线
+      const startX = gridOffsetX % gridCellWidth;
+      for (let x = startX; x < canvasWidth; x += gridCellWidth) {
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
+        ctx.lineTo(x, canvasHeight);
       }
-    }
-    // 绘制水平线
-    const rowsToDraw = Math.ceil(numRows);
-    for (let i = 1; i < rowsToDraw; i++) { // 画内部线
-      const y = i * gridH;
-      if (y <= height) { // 避免超出画布
+
+      // 绘制水平线
+      const startY = gridOffsetY % gridCellHeight;
+      for (let y = startY; y < canvasHeight; y += gridCellHeight) {
         ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        ctx.lineTo(canvasWidth, y);
       }
-    }
-    ctx.stroke();
-  },
 
-  // 添加网格编号 (接收格子宽高和计算出的行列数)
-  // 注意：传入的 numCols 和 numRows 可能不是整数
-  addNumbersToGrid(ctx: RenderingContext, width: number, height: number, gridW: number, gridH: number, numCols: number, numRows: number) {
-    // console.log(`Entering addNumbersToGrid: gridW=${gridW.toFixed(2)}, gridH=${gridH.toFixed(2)}, cols=${numCols.toFixed(2)}, rows=${numRows.toFixed(2)}`);
-    // 调整判断条件
-    if (gridW < 4 || gridH < 4) { // 格子太小不方便显示数字
-      console.warn("addNumbersToGrid: Grid dimensions too small for numbers, skipping.", gridW, gridH);
-      return;
-    }
+      ctx.stroke();
+    },
 
-    let number = 1;
-    const fontSize = Math.max(6, Math.min(gridW * 0.3, gridH * 0.3, 10));
-    ctx.font = `${fontSize}px Arial`;
-    ctx.textBaseline = 'middle';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#000';
+    // 网格控制方法
 
-    // 使用 Math.floor 确保只在完整的格子里绘制编号
-    const colsToNumber = Math.floor(numCols);
-    const rowsToNumber = Math.floor(numRows);
+    // 增大网格尺寸
+    increaseGridSize() {
+      if (!this.data.tempFilePath) return;
 
-    for (let row = 0; row < rowsToNumber; row++) {
-      for (let col = 0; col < colsToNumber; col++) {
-        const x = col * gridW;
-        const y = row * gridH;
-        ctx.fillText(
-          number.toString(),
-          x + gridW / 2,
-          y + gridH / 2
-        );
-        number++;
+      const newWidth = this.data.gridCellWidth * 1.1;
+      const newHeight = this.data.gridCellHeight * 1.1;
+
+      this.setData({
+        gridCellWidth: newWidth,
+        gridCellHeight: newHeight
+      }, this.redrawCanvas);
+    },
+
+    // 减小网格尺寸
+    decreaseGridSize() {
+      if (!this.data.tempFilePath) return;
+
+      // 防止网格过小
+      if (this.data.gridCellWidth < 1 || this.data.gridCellHeight < 1) {
+        wx.showToast({ title: '网格已达最小尺寸', icon: 'none' });
+        return;
       }
+
+      const newWidth = this.data.gridCellWidth / 1.1;
+      const newHeight = this.data.gridCellHeight / 1.1;
+
+      this.setData({
+        gridCellWidth: newWidth,
+        gridCellHeight: newHeight
+      }, this.redrawCanvas);
+    },
+
+    // 移动网格位置
+    moveGridLeft() {
+      if (!this.data.tempFilePath) return;
+      this.setData({
+        gridOffsetX: this.data.gridOffsetX - 1
+      }, this.redrawCanvas);
+    },
+
+    moveGridRight() {
+      if (!this.data.tempFilePath) return;
+      this.setData({
+        gridOffsetX: this.data.gridOffsetX + 1
+      }, this.redrawCanvas);
+    },
+
+    moveGridUp() {
+      if (!this.data.tempFilePath) return;
+      this.setData({
+        gridOffsetY: this.data.gridOffsetY - 1
+      }, this.redrawCanvas);
+    },
+
+    moveGridDown() {
+      if (!this.data.tempFilePath) return;
+      this.setData({
+        gridOffsetY: this.data.gridOffsetY + 1
+      }, this.redrawCanvas);
+    },
+
+    // 重置网格到初始状态
+    resetGrid() {
+      if (!this.data.tempFilePath) return;
+
+      const { canvasWidth, canvasHeight, confirmedGridSize } = this.data;
+
+      wx.getImageInfo({
+        src: this.data.tempFilePath,
+        success: (imgRes) => {
+          const imgWidth = imgRes.width;
+          const imgHeight = imgRes.height;
+
+          // 重新计算初始网格尺寸
+          const gridCellWidth = canvasWidth / confirmedGridSize;
+          const numVerticalGrids = confirmedGridSize * (imgHeight / imgWidth);
+          const gridCellHeight = canvasHeight / numVerticalGrids;
+
+          this.setData({
+            gridCellWidth: gridCellWidth,
+            gridCellHeight: gridCellHeight,
+            gridOffsetX: 0,
+            gridOffsetY: 0
+          }, this.redrawCanvas);
+        }
+      });
+    },
+    exportImg() {
+      const query = wx.createSelectorQuery().in(this);
+      query.select('#previewCanvas').fields({ node: true, size: true }).exec((res) => {
+        if (res[0]) {
+          const canvas = res[0].node;
+          wx.canvasToTempFilePath({
+            canvas,
+            success: (res) => {
+              const tempFilePath = res.tempFilePath;
+              wx.saveImageToPhotosAlbum({
+                filePath: tempFilePath,
+                success: () => {
+                  wx.showToast({
+                    title: '图片保存成功',
+                    icon: 'success'
+                  });
+                },
+                fail: (err) => {
+                  console.error('保存图片失败:', err);
+                }
+              });
+            },
+            fail: (err) => {
+              console.error('转换为临时文件失败:', err);
+            }
+          });
+        } else {
+          console.error('未找到 canvas 元素');
+        }
+      });
     }
-    // console.log("addNumbersToGrid: Finished drawing numbers.");
   }
-});
+})
