@@ -1,67 +1,35 @@
 <!--index.wxml-->
 <navigation-bar title="拼豆图转换器" back="{{false}}" color="black" background="#FFF"></navigation-bar>
 <view class="page-container">
+  <view class="container">
+    <!-- 控制区 -->
+    <view class="controls">
+      <!-- 缩放控制 -->
+      <view class="control-group">
+        <text>缩放：</text>
+        <button bindtap="zoomOut" size="mini">-</button>
+        <text class="scale-text">{{scale}}%</text>
+        <button bindtap="zoomIn" size="mini">+</button>
+      </view>
 
-  <!-- 图片上传区域 -->
-  <view bind:tap="chooseImage" class="uploader-container">
-    <view class="uploader-content">
-      <image class="uploader-icon" src="/static/upload.png"></image>
-      <text class="uploader-text-main">拖放图片到此处，或<text class="uploader-link">点击选择文件</text></text>
-      <text class="uploader-text-sub">支持 JPG, PNG 格式</text>
-    </view>
-  </view>
-
-  <!-- 参数设置区域 -->
-  <view class="card-container">
-    <!-- 横轴格子 -->
-    <view class="setting-item">
-      <text class="setting-label">横轴格子 (10-200):</text>
-      <view class="setting-control input-group">
-        <input class="setting-input" type="number" value="{{gridSize}}" bindinput="onGridSizeInput" maxlength="3" />
-        <button class="setting-button" size="mini" type="primary" bindtap="confirmGridSize">确认</button>
+      <!-- 位移控制 -->
+      <view class="control-group">
+        <text>位移：</text>
+        <button bindtap="moveImage" data-direction="up" size="mini">↑</button>
+        <button bindtap="moveImage" data-direction="left" size="mini">←</button>
+        <button bindtap="moveImage" data-direction="right" size="mini">→</button>
+        <button bindtap="moveImage" data-direction="down" size="mini">↓</button>
+        <button bindtap="resetPosition" size="mini">复位</button>
       </view>
     </view>
 
-    <!-- 区域颜色合并 -->
-    <view class="setting-item slider-item">
-      <text class="setting-label">区域颜色合并: {{mergeLevel}}</text>
-      <view class="setting-control slider-group">
-        <text class="slider-label-min">少</text>
-        <slider class="setting-slider" value="{{mergeLevel}}" min="1" max="100" bindchange="onMergeLevelChange" show-value="{{false}}" activeColor="#8A2BE2" block-size="20" />
-        <text class="slider-label-max">多</text>
-      </view>
-    </view>
+    <!-- 画布容器 -->
+    <view class="grid-container">
+      <!-- 固定网格 -->
+      <view class="grid-bg" style="background-size: {{gridSize}}px {{gridSize}}px;"></view>
 
-    <!-- 选择色板 -->
-    <view class="setting-item">
-      <text class="setting-label">选择色板:</text>
-      <view class="setting-control">
-        <picker class="setting-picker" mode="selector" range="{{paletteOptions}}" value="{{paletteIndex}}" bindchange="onPaletteChange">
-          <view class="picker-content">
-            {{paletteOptions[paletteIndex]}}
-            <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image> -->
-          </view>
-        </picker>
-      </view>
+      <!-- 可移动+缩放的图片 -->
+      <image src="{{imagePath}}" style="transform: translate({{offsetX}}px, {{offsetY}}px) scale({{scale / 100}});" mode="widthFix" />
     </view>
-
-    <!-- 处理模式 -->
-    <view class="setting-item">
-      <text class="setting-label">处理模式:</text>
-      <view class="setting-control">
-        <picker class="setting-picker" mode="selector" range="{{modeOptions}}" value="{{modeIndex}}" bindchange="onModeChange">
-          <view class="picker-content">
-            {{modeOptions[modeIndex]}}
-            <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image>  -->
-          </view>
-        </picker>
-      </view>
-    </view>
-  </view>
-  <view class="result-container">
-    <!-- wx:if 控制显示，style 控制尺寸 -->
-    <canvas wx:if="{{imagePath}}" id="previewCanvas" type="2d" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
-    <!-- 可以加一个图片未选择时的提示 -->
-    <view wx:else class="placeholder-text">请先选择图片</view>
   </view>
 </view>
