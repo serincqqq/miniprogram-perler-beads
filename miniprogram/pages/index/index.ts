@@ -30,12 +30,14 @@ Component({
     // 校准弹窗相关
     showCalibrationModal: false,     // 是否显示校准弹窗
     calibrationImg: '',              // 校准弹窗中显示的图片
-    // 轴线位置 (百分比值0-100)
-    leftAxis: 25,                    // 左侧垂直轴位置
-    rightAxis: 35,                   // 右侧垂直轴位置
-    topAxis: 25,                     // 顶部水平轴位置
-    bottomAxis: 35,                  // 底部水平轴位置
-    isMovingAxis: '',                // 当前正在移动的轴 ('left'/'right'/'top'/'bottom')
+    // 轴线位置 (改为像素值而非百分比)
+    leftAxis: 30,
+    rightAxis: 60,
+    topAxis: 30,
+    bottomAxis: 60,
+    isMovingAxis: '',
+    calibrationCellWidth: 0,  // 新增：校准后的单元格宽度
+    calibrationCellHeight: 0, // 新增：校准后的单元格高度
   },
 
   // Canvas 和 context 作为组件实例的属性
@@ -191,7 +193,13 @@ Component({
 
       console.log('Canvas尺寸已更新');
 
-      // 计算初始网格尺寸
+      // 如果已有校准数据，直接使用
+      if (this.data.gridCellWidth > 0 && this.data.gridCellHeight > 0) {
+        this.redrawCanvas();
+        return;
+      }
+
+      // 否则使用原来的计算方式
       const { canvasWidth, canvasHeight, confirmedGridSize, tempFilePath } = this.data;
 
       wx.getImageInfo({
@@ -435,75 +443,86 @@ Component({
     // 应用校准结果
     applyCalibration() {
       if (!this.data.tempFilePath) return;
-      
-      // 计算选择的单元格的宽度和高度（百分比）
-      const cellWidthPercent = this.data.rightAxis - this.data.leftAxis;
-      const cellHeightPercent = this.data.bottomAxis - this.data.topAxis;
-      
-      if (cellWidthPercent <= 0 || cellHeightPercent <= 0) {
-        wx.showToast({ 
-          title: '请正确框选单元格', 
-          icon: 'none' 
+
+      // 获取选定区域的像素尺寸
+      const cellWidth = Math.floor(this.data.rightAxis - this.data.leftAxis);
+      const cellHeight = Math.floor(this.data.bottomAxis - this.data.topAxis);
+      console.log('ff', cellWidth, cellHeight)
+      if (cellWidth <= 5 || cellHeight <= 5) {
+        wx.showToast({
+          title: '请框选更大的区域',
+          icon: 'none'
         });
         return;
       }
-      
+
       // 获取图片信息
       wx.getImageInfo({
         src: this.data.tempFilePath,
         success: (imgRes) => {
           const imgWidth = imgRes.width;
           const imgHeight = imgRes.height;
-          
-          // 根据选择的单元格计算图片应该有多少列和行
-          // 选择的单元格宽度在整个图片中的实际像素值
-          const selectedCellWidthPx = (cellWidthPercent / 100) * imgWidth;
-          const selectedCellHeightPx = (cellHeightPercent / 100) * imgHeight;
-          
-          // 计算图片应有的总列数和行数
-          const totalCols = Math.round(imgWidth / selectedCellWidthPx);
-          const totalRows = Math.round(imgHeight / selectedCellHeightPx);
-          
-          console.log(`计算得到的单元格尺寸: ${selectedCellWidthPx}x${selectedCellHeightPx}像素`);
-          console.log(`总列数: ${totalCols}, 总行数: ${totalRows}`);
-          
-          // 查询容器大小以设置Canvas尺寸
-          const query = wx.createSelectorQuery().in(this);
-          query.select('.result-container').boundingClientRect((containerRes) => {
-            if (!containerRes) {
-              wx.showToast({ title: '无法获取容器尺寸', icon: 'none' });
+
+          // 计算单元格在校准弹窗中的宽高比例
+          const containerQuery = wx.createSelectorQuery().in(this);
+          containerQuery.select('.calibration-image-container').boundingClientRect(rect => {
+            if (!rect) {
+              wx.showToast({ title: '无法获取校准容器尺寸', icon: 'none' });
               return;
             }
-            const containerWidth = containerRes.width;
-            const calculatedCanvasHeight = containerWidth * (imgHeight / imgWidth);
-            
-            // 设置画布尺寸和图片
-            this.setData({
-              imagePath: this.data.tempFilePath,
-              canvasWidth: containerWidth,
-              canvasHeight: calculatedCanvasHeight,
-              // 使用计算得到的单元格数作为网格参数
-              confirmedGridSize: totalCols,
-              gridCellWidth: containerWidth / totalCols,
-              gridCellHeight: calculatedCanvasHeight / totalRows,
-              gridOffsetX: 0,
-              gridOffsetY: 0,
-              // 关闭校准弹窗
-              showCalibrationModal: false
-            }, () => {
-              // 延时确保DOM更新
-              setTimeout(() => {
-                if (this.canvas && this.ctx) {
-                  this.updateCanvasSize();
-                } else {
-                  this.initializeCanvas();
-                }
-                wx.showToast({ 
-                  title: '校准完成，已生成网格', 
-                  icon: 'success' 
-                });
-              }, 150);
-            });
+
+            const { width: containerWidth, height: containerHeight } = rect;
+
+            // 根据容器和图片尺寸计算比例
+            // 注意：calibrationImage的样式设置了transform: scale(2)，所以这里需要除以2
+            const scaleX = imgWidth / (containerWidth / 2);
+            const scaleY = imgHeight / (containerHeight / 2);
+            console.log('dd', scaleX, scaleY)
+            // 计算实际图片中单元格的像素尺寸
+            const imgCellWidth = cellWidth * scaleX;
+            const imgCellHeight = cellHeight * scaleY;
+
+            // 计算画布的尺寸
+            const query = wx.createSelectorQuery().in(this);
+            query.select('.result-container').boundingClientRect((resultContainerRes) => {
+              if (!resultContainerRes) {
+                wx.showToast({ title: '无法获取容器尺寸', icon: 'none' });
+                return;
+              }
+
+              const containerWidth = resultContainerRes.width;
+              const calculatedCanvasHeight = containerWidth * (imgHeight / imgWidth);
+
+              // 计算画布上的单元格尺寸
+              const canvasCellWidth = (imgCellWidth / imgWidth) * containerWidth;
+              const canvasCellHeight = (imgCellHeight / imgHeight) * calculatedCanvasHeight;
+
+              // 设置数据并更新画布
+              this.setData({
+                imagePath: this.data.tempFilePath,
+                canvasWidth: containerWidth,
+                canvasHeight: calculatedCanvasHeight,
+                gridCellWidth: cellWidth / 2,
+                gridCellHeight: cellWidth / 2,
+
+                gridOffsetX: 0,
+                gridOffsetY: 0,
+                showCalibrationModal: false
+              }, () => {
+                setTimeout(() => {
+                  if (this.canvas && this.ctx) {
+                    this.updateCanvasSize();
+                  } else {
+                    this.initializeCanvas();
+                  }
+
+                  wx.showToast({
+                    title: '校准应用成功',
+                    icon: 'success'
+                  });
+                }, 150);
+              });
+            }).exec();
           }).exec();
         },
         fail: (err) => {
@@ -517,6 +536,7 @@ Component({
     startMoveAxis(e) {
       const axis = e.currentTarget.dataset.axis;
       this.setData({ isMovingAxis: axis });
+
     },
 
     // 停止移动轴线
@@ -528,37 +548,37 @@ Component({
     moveAxis(e) {
       const { isMovingAxis } = this.data;
       if (!isMovingAxis) return;
-      
+
       const { clientX, clientY } = e.touches[0];
-      
+
       // 获取校准图片容器的位置和尺寸
       const query = wx.createSelectorQuery().in(this);
       query.select('.calibration-image-container').boundingClientRect(rect => {
         if (!rect) return;
-        
+
         const { left, top, width, height } = rect;
-        
-        // 计算触摸点相对于图片容器的百分比位置
-        let percentX = ((clientX - left) / width) * 100;
-        let percentY = ((clientY - top) / height) * 100;
-        
-        // 限制在0-100范围内
-        percentX = Math.max(0, Math.min(100, percentX));
-        percentY = Math.max(0, Math.min(100, percentY));
-        
+
+        // 计算触摸点相对于图片容器的位置
+        const posX = clientX - left;
+        const posY = clientY - top;
+
+        // 确保位置在容器范围内
+        const clampedX = Math.max(0, Math.min(width, posX));
+        const clampedY = Math.max(0, Math.min(height, posY));
+
         // 根据当前移动的轴更新位置
         const data: any = {};
-        
+
         if (isMovingAxis === 'left') {
-          data.leftAxis = Math.min(percentX, this.data.rightAxis - 1);
+          data.leftAxis = Math.min(clampedX, this.data.rightAxis - 10);
         } else if (isMovingAxis === 'right') {
-          data.rightAxis = Math.max(percentX, this.data.leftAxis + 1);
+          data.rightAxis = Math.max(clampedX, this.data.leftAxis + 10);
         } else if (isMovingAxis === 'top') {
-          data.topAxis = Math.min(percentY, this.data.bottomAxis - 1);
+          data.topAxis = Math.min(clampedY, this.data.bottomAxis - 10);
         } else if (isMovingAxis === 'bottom') {
-          data.bottomAxis = Math.max(percentY, this.data.topAxis + 1);
+          data.bottomAxis = Math.max(clampedY, this.data.topAxis + 10);
         }
-        
+
         this.setData(data);
       }).exec();
     },

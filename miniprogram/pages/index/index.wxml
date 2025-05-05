@@ -103,43 +103,40 @@
         <text class="calibration-title">单元格校准</text>
         <text class="calibration-close" bindtap="closeCalibrationModal">×</text>
       </view>
-      
+
       <view class="calibration-instruction">
-        <text>请拖动四条线框选一个您认为是一个单元格的区域</text>
+        <text>请拖动四条红线框选一个单元格，然后点击"应用"</text>
       </view>
-      
+
       <view class="calibration-image-container">
         <image class="calibration-image" src="{{calibrationImg}}" mode="aspectFit"></image>
-        
-        <!-- 左侧垂直轴 -->
+
+        <!-- 修改为像素定位 -->
         <view class="axis vertical-axis left-axis" 
-              style="left: {{leftAxis}}%" 
+              style="left: {{leftAxis}}px" 
               bindtouchstart="startMoveAxis" 
               data-axis="left"></view>
         
-        <!-- 右侧垂直轴 -->
         <view class="axis vertical-axis right-axis" 
-              style="left: {{rightAxis}}%" 
+              style="left: {{rightAxis}}px" 
               bindtouchstart="startMoveAxis" 
               data-axis="right"></view>
         
-        <!-- 顶部水平轴 -->
         <view class="axis horizontal-axis top-axis" 
-              style="top: {{topAxis}}%" 
+              style="top: {{topAxis}}px" 
               bindtouchstart="startMoveAxis" 
               data-axis="top"></view>
         
-        <!-- 底部水平轴 -->
         <view class="axis horizontal-axis bottom-axis" 
-              style="top: {{bottomAxis}}%" 
+              style="top: {{bottomAxis}}px" 
               bindtouchstart="startMoveAxis" 
               data-axis="bottom"></view>
         
         <!-- 选中区域高亮 -->
         <view class="selected-area" 
-              style="left: {{leftAxis}}%; top: {{topAxis}}%; width: {{rightAxis - leftAxis}}%; height: {{bottomAxis - topAxis}}%"></view>
+              style="left: {{leftAxis}}px; top: {{topAxis}}px; width: {{rightAxis - leftAxis}}px; height: {{bottomAxis - topAxis}}px"></view>
       </view>
-      
+
       <view class="calibration-buttons">
         <button class="calibration-button cancel" bindtap="closeCalibrationModal">取消</button>
         <button class="calibration-button apply" bindtap="applyCalibration">应用</button>
