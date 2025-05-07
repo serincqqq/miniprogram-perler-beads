@@ -14,6 +14,10 @@ Component({
     topValue: 0,
     mainBottomAxis: 20,
     bottomValue: 0,
+    prevLeftValue: 20, // 新增：记录上一次左侧滑块的值
+    prevRightValue: 20, // 新增：记录上一次右侧滑块的值
+    prevTopValue: 20, // 新增：记录上一次顶部滑块的值
+    prevBottomValue: 20,// 新增：记录上一次底部滑块的值
     //画布相关变量
     tempFilePath: '',
     gridSize: 52,
@@ -389,54 +393,76 @@ Component({
     },
 
     // 移动网格位置
-    onMainLeftAxisChange(e) {
+    onAxisChange(e) {
       if (!this.data.tempFilePath) return;
-      // this.setData({
-      //   gridOffsetX: this.data.gridOffsetX - 1
-      // }, this.redrawCanvas);
       const sliderValue = e.detail.value;
-      // 将 slider 的值转换为以中间位置为 0 的正负数值
-      const currentValue = sliderValue - 20;
-      this.setData({
-        sliderValue: sliderValue,
-        leftValue: currentValue,
-        gridCellWidth: this.data.gridCellWidth - (sliderValue - 20)
-      }, this.redrawCanvas());
-    },
+      const type = e.currentTarget.dataset.type;
 
-    onMainRightAxisChange(e) {
-      const sliderValue = e.detail.value;
-      // 将 slider 的值转换为以中间位置为 0 的正负数值
-      const currentValue = sliderValue - 20;
-      this.setData({
-        sliderValue: sliderValue,
-        rightValue: currentValue,
-        gridCellWidth: this.data.gridCellWidth + (sliderValue - 20)
-      }, this.redrawCanvas());
+      let dataToUpdate = {
+        sliderValue: sliderValue
+      };
 
-    },
+      let prevValueKey = `prev${type.charAt(0).toUpperCase() + type.slice(1)}Value`;
+      let prevValue = this.data[prevValueKey];
+      let valueDiff = sliderValue - prevValue; // 计算滑块值的差值
 
-    onMainTopAxisChange() {
-      if (!this.data.tempFilePath) return;
-      // this.setData({
-      //   gridOffsetY: this.data.gridOffsetY - 1
-      // }, this.redrawCanvas);
-      this.setData({
-        gridCellHeight: this.data.gridCellHeight + this.data.mainTopAxis,
-        gridOffsetY: this.data.gridOffsetY - this.data.mainTopAxis
-      }, this.redrawCanvas());
-    },
+      switch (type) {
+        case 'left':
+          dataToUpdate.leftValue = sliderValue - 20;
+          dataToUpdate.gridCellWidth = this.data.gridCellWidth - valueDiff;
+          dataToUpdate.prevLeftValue = sliderValue; // 更新上一次的值
+          break;
+        case 'right':
+          dataToUpdate.rightValue = sliderValue;
+          dataToUpdate.gridCellWidth = this.data.gridCellWidth + valueDiff;
+          dataToUpdate.prevRightValue = sliderValue; // 更新上一次的值
+          break;
+        case 'top':
+          dataToUpdate.topValue = sliderValue;
+          dataToUpdate.gridCellHeight = this.data.gridCellHeight + valueDiff;
+          dataToUpdate.prevTopValue = sliderValue; // 更新上一次的值
+          break;
+        case 'bottom':
+          dataToUpdate.bottomValue = sliderValue;
+          dataToUpdate.gridCellHeight = this.data.gridCellHeight - valueDiff;
+          dataToUpdate.prevBottomValue = sliderValue; // 更新上一次的值
+          break;
+        default:
+          break;
+      }
 
-    moveGridDown() {
-      if (!this.data.tempFilePath) return;
-      // this.setData({
-      //   gridOffsetY: this.data.gridOffsetY + 1
-      // }, this.redrawCanvas);
-      this.setData({
-        gridCellHeight: this.data.gridCellHeight - 1,
-        gridOffsetY: this.data.gridOffsetY + 1
-      }, this.redrawCanvas());
+      this.setData(dataToUpdate, () => {
+        this.redrawCanvas();
+      });
     },
+    // onMainLeftAxisChange(e) {
+    //   if (!this.data.tempFilePath) return;
+    //   // this.setData({
+    //   //   gridOffsetX: this.data.gridOffsetX - 1
+    //   // }, this.redrawCanvas);
+    //   const sliderValue = e.detail.value;
+    //   // 将 slider 的值转换为以中间位置为 0 的正负数值
+    //   const currentValue = sliderValue - 20;
+    //   this.setData({
+    //     sliderValue: sliderValue,
+    //     leftValue: currentValue,
+    //     gridCellWidth: this.data.gridCellWidth - (sliderValue - 20)
+    //   }, this.redrawCanvas());
+    // },
+
+    // onMainRightAxisChange(e) {
+    //   const sliderValue = e.detail.value;
+    //   // 将 slider 的值转换为以中间位置为 0 的正负数值
+    //   const currentValue = sliderValue - 20;
+    //   this.setData({
+    //     sliderValue: sliderValue,
+    //     rightValue: currentValue,
+    //     gridCellWidth: this.data.gridCellWidth + (sliderValue - 20)
+    //   }, this.redrawCanvas());
+
+    // },
+
+
 
     // 重置网格到初始状态
     resetGrid() {

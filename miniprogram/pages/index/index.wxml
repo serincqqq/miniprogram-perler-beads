@@ -71,20 +71,20 @@
       <text class="section-title">单元格边界微调</text>
       <view class="slider-row">
         <text class="slider-label">左线{{leftValue}}</text>
-        <slider class="grid-slider" min="0" max="40" value="{{mainLeftAxis}}" bindchange="onMainLeftAxisChange" />
+        <slider class="grid-slider" min="0" max="40" value="{{mainLeftAxis}}" bindchange="onAxisChange" data-type="left" />
 
       </view>
       <view class="slider-row">
         <text class="slider-label">右线{{rightValue}}</text>
-        <slider class="grid-slider" min="0" max="40" value="{{mainRightAxis}}" bindchange="onMainRightAxisChange" />
+        <slider class="grid-slider" min="0" max="40" value="{{mainRightAxis}}" bindchange="onAxisChange" data-type="right" />
       </view>
       <view class="slider-row">
         <text class="slider-label">上线{{topValue}}</text>
-        <slider class="grid-slider" min="0" max="40" value="{{mainTopAxis}}" bindchange="onMainTopAxisChange" />
+        <slider class="grid-slider" min="0" max="40" value="{{mainTopAxis}}" bindchange="onAxisChange" data-type="top" />
       </view>
       <view class="slider-row">
         <text class="slider-label">下线{{bottomValue}}</text>
-        <slider class="grid-slider" min="0" max="40" value="{{mainBottomAxis}}" bindchange="onMainBottomAxisChange" />
+        <slider class="grid-slider" min="0" max="40" value="{{mainBottomAxis}}" bindchange="onAxisChange" data-type="bottom" />
       </view>
     </view>
     <button size="mini" bindtap="resetMainAxes" class="reset-button">重置边界</button>
