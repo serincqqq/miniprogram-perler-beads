@@ -410,21 +410,25 @@ Component({
         case 'left':
           dataToUpdate.leftValue = sliderValue - 20;
           dataToUpdate.gridCellWidth = this.data.gridCellWidth - valueDiff;
+          dataToUpdate.gridOffsetX = this.data.gridCellWidth - valueDiff;
           dataToUpdate.prevLeftValue = sliderValue; // 更新上一次的值
           break;
         case 'right':
           dataToUpdate.rightValue = sliderValue;
           dataToUpdate.gridCellWidth = this.data.gridCellWidth + valueDiff;
+          dataToUpdate.gridOffsetX = this.data.gridCellWidth + valueDiff;
           dataToUpdate.prevRightValue = sliderValue; // 更新上一次的值
           break;
         case 'top':
           dataToUpdate.topValue = sliderValue;
           dataToUpdate.gridCellHeight = this.data.gridCellHeight + valueDiff;
+          dataToUpdate.gridOffsetY = this.data.gridCellHeight + valueDiff;
           dataToUpdate.prevTopValue = sliderValue; // 更新上一次的值
           break;
         case 'bottom':
           dataToUpdate.bottomValue = sliderValue;
           dataToUpdate.gridCellHeight = this.data.gridCellHeight - valueDiff;
+          dataToUpdate.gridOffsetY = this.data.gridCellHeight - valueDiff;
           dataToUpdate.prevBottomValue = sliderValue; // 更新上一次的值
           break;
         default:
