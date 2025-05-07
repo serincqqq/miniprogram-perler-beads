@@ -66,33 +66,28 @@
   </view>
 
   <!-- 网格控制面板 -->
-  <view wx:if="{{tempFilePath}}" class="grid-controls">
+  <view class="grid-controls">
     <view class="control-section">
-      <text class="section-title">网格大小调整</text>
-      <view class="button-row">
-        <button size="mini" bindtap="decreaseGridSize" class="control-button">缩小网格</button>
-        <button size="mini" bindtap="increaseGridSize" class="control-button">放大网格</button>
+      <text class="section-title">单元格边界微调</text>
+      <view class="slider-row">
+        <text class="slider-label">左线{{leftValue}}</text>
+        <slider class="grid-slider" min="0" max="40" value="{{mainLeftAxis}}" bindchange="onMainLeftAxisChange" />
+
+      </view>
+      <view class="slider-row">
+        <text class="slider-label">右线{{rightValue}}</text>
+        <slider class="grid-slider" min="0" max="40" value="{{mainRightAxis}}" bindchange="onMainRightAxisChange" />
+      </view>
+      <view class="slider-row">
+        <text class="slider-label">上线{{topValue}}</text>
+        <slider class="grid-slider" min="0" max="40" value="{{mainTopAxis}}" bindchange="onMainTopAxisChange" />
+      </view>
+      <view class="slider-row">
+        <text class="slider-label">下线{{bottomValue}}</text>
+        <slider class="grid-slider" min="0" max="40" value="{{mainBottomAxis}}" bindchange="onMainBottomAxisChange" />
       </view>
     </view>
-
-    <view class="control-section">
-      <text class="section-title">网格位置调整</text>
-      <view class="direction-controls">
-        <!-- 上按钮 -->
-        <button size="mini" bindtap="moveGridUp" class="direction-button">↑</button>
-
-        <!-- 左、右按钮 -->
-        <view class="horizontal-buttons">
-          <button size="mini" bindtap="moveGridLeft" class="direction-button">←</button>
-          <button size="mini" bindtap="moveGridRight" class="direction-button">→</button>
-        </view>
-
-        <!-- 下按钮 -->
-        <button size="mini" bindtap="moveGridDown" class="direction-button">↓</button>
-      </view>
-    </view>
-
-    <button size="mini" bindtap="resetGrid" class="reset-button">重置网格</button>
+    <button size="mini" bindtap="resetMainAxes" class="reset-button">重置边界</button>
     <button class="setting-button" size="mini" type="primary" bindtap="exportImg">导出</button>
   </view>
 
@@ -112,29 +107,16 @@
         <image class="calibration-image" src="{{calibrationImg}}" mode="aspectFit"></image>
 
         <!-- 修改为像素定位 -->
-        <view class="axis vertical-axis left-axis" 
-              style="left: {{leftAxis}}px" 
-              bindtouchstart="startMoveAxis" 
-              data-axis="left"></view>
-        
-        <view class="axis vertical-axis right-axis" 
-              style="left: {{rightAxis}}px" 
-              bindtouchstart="startMoveAxis" 
-              data-axis="right"></view>
-        
-        <view class="axis horizontal-axis top-axis" 
-              style="top: {{topAxis}}px" 
-              bindtouchstart="startMoveAxis" 
-              data-axis="top"></view>
-        
-        <view class="axis horizontal-axis bottom-axis" 
-              style="top: {{bottomAxis}}px" 
-              bindtouchstart="startMoveAxis" 
-              data-axis="bottom"></view>
-        
+        <view class="axis vertical-axis left-axis" style="left: {{leftAxis}}px" bindtouchstart="startMoveAxis" data-axis="left"></view>
+
+        <view class="axis vertical-axis right-axis" style="left: {{rightAxis}}px" bindtouchstart="startMoveAxis" data-axis="right"></view>
+
+        <view class="axis horizontal-axis top-axis" style="top: {{topAxis}}px" bindtouchstart="startMoveAxis" data-axis="top"></view>
+
+        <view class="axis horizontal-axis bottom-axis" style="top: {{bottomAxis}}px" bindtouchstart="startMoveAxis" data-axis="bottom"></view>
+
         <!-- 选中区域高亮 -->
-        <view class="selected-area" 
-              style="left: {{leftAxis}}px; top: {{topAxis}}px; width: {{rightAxis - leftAxis}}px; height: {{bottomAxis - topAxis}}px"></view>
+        <view class="selected-area" style="left: {{leftAxis}}px; top: {{topAxis}}px; width: {{rightAxis - leftAxis}}px; height: {{bottomAxis - topAxis}}px"></view>
       </view>
 
       <view class="calibration-buttons">

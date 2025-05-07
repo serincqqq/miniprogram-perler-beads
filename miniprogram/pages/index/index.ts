@@ -5,6 +5,16 @@ type RenderingContext = any; // 替换为正确导入的类型，或使用 any
 
 Component({
   data: {
+    //网格图格子微调相关变量
+    mainLeftAxis: 20,
+    leftValue: 0, // 转换后的当前值
+    mainRightAxis: 20,
+    rightValue: 0,
+    mainTopAxis: 20,
+    topValue: 0,
+    mainBottomAxis: 20,
+    bottomValue: 0,
+    //画布相关变量
     tempFilePath: '',
     gridSize: 52,
     confirmedGridSize: 52,
@@ -32,9 +42,9 @@ Component({
     calibrationImg: '',              // 校准弹窗中显示的图片
     // 轴线位置 (改为像素值而非百分比)
     leftAxis: 30,
-    rightAxis: 60,
+    rightAxis: 80,
     topAxis: 30,
-    bottomAxis: 60,
+    bottomAxis: 80,
     isMovingAxis: '',
     calibrationCellWidth: 0,  // 新增：校准后的单元格宽度
     calibrationCellHeight: 0, // 新增：校准后的单元格高度
@@ -104,10 +114,10 @@ Component({
             tempFilePath: tempFilePath,
             calibrationImg: tempFilePath,
             // 重置轴线位置
-            leftAxis: 25,
-            rightAxis: 35,
-            topAxis: 25,
-            bottomAxis: 35,
+            // leftAxis: 25,
+            // rightAxis: 35,
+            // topAxis: 25,
+            // bottomAxis: 35,
             // 显示校准弹窗
             showCalibrationModal: true
           });
@@ -330,6 +340,7 @@ Component({
         const alignedX = alignToPixel(x);
         ctx.moveTo(alignedX, 0);
         ctx.lineTo(alignedX, canvasHeight);
+
       }
 
       // 绘制水平线
@@ -378,32 +389,53 @@ Component({
     },
 
     // 移动网格位置
-    moveGridLeft() {
+    onMainLeftAxisChange(e) {
       if (!this.data.tempFilePath) return;
+      // this.setData({
+      //   gridOffsetX: this.data.gridOffsetX - 1
+      // }, this.redrawCanvas);
+      const sliderValue = e.detail.value;
+      // 将 slider 的值转换为以中间位置为 0 的正负数值
+      const currentValue = sliderValue - 20;
       this.setData({
-        gridOffsetX: this.data.gridOffsetX - 1
-      }, this.redrawCanvas);
+        sliderValue: sliderValue,
+        leftValue: currentValue,
+        gridCellWidth: this.data.gridCellWidth - (sliderValue - 20)
+      }, this.redrawCanvas());
     },
 
-    moveGridRight() {
-      if (!this.data.tempFilePath) return;
+    onMainRightAxisChange(e) {
+      const sliderValue = e.detail.value;
+      // 将 slider 的值转换为以中间位置为 0 的正负数值
+      const currentValue = sliderValue - 20;
       this.setData({
-        gridOffsetX: this.data.gridOffsetX + 1
-      }, this.redrawCanvas);
+        sliderValue: sliderValue,
+        rightValue: currentValue,
+        gridCellWidth: this.data.gridCellWidth + (sliderValue - 20)
+      }, this.redrawCanvas());
+
     },
 
-    moveGridUp() {
+    onMainTopAxisChange() {
       if (!this.data.tempFilePath) return;
+      // this.setData({
+      //   gridOffsetY: this.data.gridOffsetY - 1
+      // }, this.redrawCanvas);
       this.setData({
-        gridOffsetY: this.data.gridOffsetY - 1
-      }, this.redrawCanvas);
+        gridCellHeight: this.data.gridCellHeight + this.data.mainTopAxis,
+        gridOffsetY: this.data.gridOffsetY - this.data.mainTopAxis
+      }, this.redrawCanvas());
     },
 
     moveGridDown() {
       if (!this.data.tempFilePath) return;
+      // this.setData({
+      //   gridOffsetY: this.data.gridOffsetY + 1
+      // }, this.redrawCanvas);
       this.setData({
+        gridCellHeight: this.data.gridCellHeight - 1,
         gridOffsetY: this.data.gridOffsetY + 1
-      }, this.redrawCanvas);
+      }, this.redrawCanvas());
     },
 
     // 重置网格到初始状态
