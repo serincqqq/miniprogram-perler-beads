@@ -391,12 +391,14 @@ Component({
         gridCellHeight: newHeight
       }, this.redrawCanvas);
     },
-    test(e) {
+    changeGridWidth(e) {
       const param = e.currentTarget.dataset.param;
-      console.log('接收到的参数:', param);
+
       if (param == 'add') {
+        console.log('接收到的参数:', typeof this.data.gridCellWidth)
         this.setData({
           gridCellWidth: this.data.gridCellWidth + 0.2
+
         }, this.redrawCanvas())
       } else {
         this.setData({
@@ -404,7 +406,7 @@ Component({
         }, this.redrawCanvas())
       }
     },
-    test1(e) {
+    changeGridHeight(e) {
       const param = e.currentTarget.dataset.param;
       console.log('接收到的参数:', param);
       if (param == 'add') {

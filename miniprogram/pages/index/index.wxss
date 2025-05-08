@@ -494,23 +494,29 @@
 }
 
 .slider-row {
+  gap: 20rpx;
   width: 100%;
   display: flex;
   align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
   margin-bottom: 10rpx;
 }
 
-.slider-label {
-  width: 100rpx;
-  text-align: right;
-  font-size: 13px;
-  color: #333;
-  margin-right: 10rpx;
+.axis-move-container {
+  display: flex;
+  flex-direction: column;
 }
 
-.justify-btn {
-  padding: 10px;
+.axis-move {
+  display: flex;
+  width: 100%;
+  justify-content: space-around;
+}
 
+.slider-label {
+  color: #333;
+  margin: 0 auto;
 }
 
 .grid-slider {

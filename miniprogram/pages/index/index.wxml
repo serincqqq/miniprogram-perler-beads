@@ -13,14 +13,6 @@
 
   <!-- 参数设置区域 -->
   <view class="card-container">
-    <!-- 横轴格子 -->
-    <view class="setting-item">
-      <text class="setting-label">横轴格子 (10-200):</text>
-      <view class="setting-control input-group">
-        <input class="setting-input" type="number" value="{{gridSize}}" bindinput="onGridSizeInput" maxlength="3" />
-        <button class="setting-button" size="mini" type="primary" bindtap="confirmGridSize">确认</button>
-      </view>
-    </view>
 
     <!-- 区域颜色合并 -->
     <view class="setting-item slider-item">
@@ -44,19 +36,6 @@
         </picker>
       </view>
     </view>
-
-    <!-- 处理模式 -->
-    <view class="setting-item">
-      <text class="setting-label">处理模式:</text>
-      <view class="setting-control">
-        <picker class="setting-picker" mode="selector" range="{{modeOptions}}" value="{{modeIndex}}" bindchange="onModeChange">
-          <view class="picker-content">
-            {{modeOptions[modeIndex]}}
-            <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image>  -->
-          </view>
-        </picker>
-      </view>
-    </view>
   </view>
   <view class="result-container">
     <!-- wx:if 控制显示，style 控制尺寸 -->
@@ -70,32 +49,26 @@
     <view class="control-section">
       <text class="section-title">单元格边界微调</text>
       <view class="slider-row">
-        <span class="justify-btn" data-param="des" bind:tap="test">-</span>
-        <text class="slider-label">左线{{gridCellWidth}}</text>
-        <span class="justify-btn" data-param="add" bind:tap="test">+</span>
-        <!-- <slider class="grid-slider" min="0" max="40" step="0.2" value="{{mainLeftAxis}}" bindchange="onAxisChange" data-type="left" /> -->
-
+        <span class="justify-btn" data-param="des" bind:tap="changeGridWidth">-</span>
+        <text class="slider-label">当前格子宽度{{gridCellWidth.toFixed(2)}}</text>
+        <span class="justify-btn" data-param="add" bind:tap="changeGridWidth">+</span>
       </view>
       <view class="slider-row">
-        <text class="slider-label">右线{{rightValue.toFixed(1)}}</text>
-        <slider class="grid-slider" min="0" max="40" value="{{mainRightAxis}}" bindchange="onAxisChange" data-type="right" step="0.2" />
+        <span class="justify-btn" data-param="des" bind:tap="changeGridHeight">-</span>
+        <text class="slider-label">当前格子高度{{gridCellHeight}}</text>
+        <span class="justify-btn" data-param="add" bind:tap="changeGridHeight">+</span>
       </view>
-      <view class="slider-row">
-        <span class="justify-btn" data-param="des" bind:tap="test1">-</span>
-        <text class="slider-label">上线{{gridCellHeight}}</text>
-        <span class="justify-btn" data-param="add" bind:tap="test1">+</span>
+      <view class="axis-move-container">
+        <view class="slider-row"> <span data-param="left" bind:tap="movwXAxis">←</span>
+          <text class="slider-label">移动x轴(左/右）</text>
+          <span data-param="right" bind:tap="movwXAxis">→</span>
+        </view>
 
-        <!-- <slider class="grid-slider" min="0" max="40" value="{{mainTopAxis}}" bindchange="onAxisChange" data-type="top" step="0.2" /> -->
-      </view>
-      <view class="slider-row">
-        <p class="justify-btn" data-param="left" bind:tap="movwXAxis">向左移动x轴</p>
-        <p class="justify-btn" data-param="right" bind:tap="movwXAxis">向右移动x轴</p>
+        <view class="axis-move"> <span data-param="top" bind:tap="movwYAxis">←</span>
+          <p>移动y轴(上/下）</p>
+          <span data-param="down" bind:tap="movwYAxis">→</span>
+        </view>
 
-        <p lass="justify-btn" data-param="up" bind:tap="movwYAxis">向上移动y轴</p>
-        <view>y:{{gridOffsetY}}</view>
-        <p lass="justify-btn" data-param="down" bind:tap="movwYAxis">向下移动y轴</p>
-        <!-- <text class="slider-label">下线{{bottomValue.toFixed(1)}}</text>
-        <slider class="grid-slider" min="0" max="40" value="{{mainBottomAxis}}" bindchange="onAxisChange" data-type="bottom" step="0.2" /> -->
       </view>
     </view>
     <button size="mini" bindtap="resetMainAxes" class="reset-button">重置边界</button>
