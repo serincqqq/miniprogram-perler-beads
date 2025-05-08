@@ -7,13 +7,13 @@ Component({
   data: {
     //网格图格子微调相关变量
     mainLeftAxis: 20,
-    leftValue: 0, // 转换后的当前值
+    leftValue: 0.0, // 转换后的当前值
     mainRightAxis: 20,
-    rightValue: 0,
+    rightValue: 0.0,
     mainTopAxis: 20,
-    topValue: 0,
+    topValue: 0.0,
     mainBottomAxis: 20,
-    bottomValue: 0,
+    bottomValue: 0.0,
     prevLeftValue: 20, // 新增：记录上一次左侧滑块的值
     prevRightValue: 20, // 新增：记录上一次右侧滑块的值
     prevTopValue: 20, // 新增：记录上一次顶部滑块的值
@@ -32,8 +32,8 @@ Component({
     imagePath: '',
 
     // 新增：网格调整参数
-    gridCellWidth: 15,    // 网格单元格宽度（像素）
-    gridCellHeight: 15,   // 网格单元格高度（像素）
+    gridCellWidth: 15.0,    // 网格单元格宽度（像素）
+    gridCellHeight: 15.0,   // 网格单元格高度（像素）
     gridOffsetX: 0,       // 网格X偏移量
     gridOffsetY: 0,       // 网格Y偏移量
 
@@ -404,37 +404,39 @@ Component({
 
       let prevValueKey = `prev${type.charAt(0).toUpperCase() + type.slice(1)}Value`;
       let prevValue = this.data[prevValueKey];
-      let valueDiff = sliderValue - prevValue; // 计算滑块值的差值
+      let valueDiff = parseFloat((sliderValue - prevValue).toFixed(1));
+      // let valueDiff = sliderValue - prevValue; // 计算滑块值的差值
 
       switch (type) {
         case 'left':
-          dataToUpdate.leftValue = sliderValue - 20;
+          dataToUpdate.leftValue = sliderValue - 20.0;
+
           dataToUpdate.gridCellWidth = this.data.gridCellWidth - valueDiff;
-          dataToUpdate.gridOffsetX = this.data.gridCellWidth - valueDiff;
+          // dataToUpdate.gridOffsetX = this.data.gridOffsetX - valueDiff;
           dataToUpdate.prevLeftValue = sliderValue; // 更新上一次的值
           break;
         case 'right':
           dataToUpdate.rightValue = sliderValue;
-          dataToUpdate.gridCellWidth = this.data.gridCellWidth + valueDiff;
-          dataToUpdate.gridOffsetX = this.data.gridCellWidth + valueDiff;
+          dataToUpdate.gridCellWidth = (this.data.gridCellWidth + valueDiff);
+          // dataToUpdate.gridOffsetX = this.data.gridOffsetX + valueDiff;
           dataToUpdate.prevRightValue = sliderValue; // 更新上一次的值
           break;
         case 'top':
           dataToUpdate.topValue = sliderValue;
           dataToUpdate.gridCellHeight = this.data.gridCellHeight + valueDiff;
-          dataToUpdate.gridOffsetY = this.data.gridCellHeight + valueDiff;
+          // dataToUpdate.gridOffsetY = this.data.gridOffsetY + valueDiff;
           dataToUpdate.prevTopValue = sliderValue; // 更新上一次的值
           break;
         case 'bottom':
           dataToUpdate.bottomValue = sliderValue;
           dataToUpdate.gridCellHeight = this.data.gridCellHeight - valueDiff;
-          dataToUpdate.gridOffsetY = this.data.gridCellHeight - valueDiff;
+          // dataToUpdate.gridOffsetY = this.data.gridOffsetY - valueDiff;
           dataToUpdate.prevBottomValue = sliderValue; // 更新上一次的值
           break;
         default:
           break;
       }
-
+      console.log('xx', this.data.gridCellHeight, this.data.gridCellWidth)
       this.setData(dataToUpdate, () => {
         this.redrawCanvas();
       });
@@ -507,16 +509,16 @@ Component({
       if (!this.data.tempFilePath) return;
 
       // 获取选定区域的像素尺寸
-      const cellWidth = Math.floor(this.data.rightAxis - this.data.leftAxis);
-      const cellHeight = Math.floor(this.data.bottomAxis - this.data.topAxis);
+      const cellWidth = (this.data.rightAxis - this.data.leftAxis).toFixed(1);
+      const cellHeight = (this.data.bottomAxis - this.data.topAxis).toFixed(1);
       console.log('ff', cellWidth, cellHeight)
-      if (cellWidth <= 5 || cellHeight <= 5) {
-        wx.showToast({
-          title: '请框选更大的区域',
-          icon: 'none'
-        });
-        return;
-      }
+      // if (cellWidth <= 5.1 || cellHeight <= 5) {
+      //   wx.showToast({
+      //     title: '请框选更大的区域',
+      //     icon: 'none'
+      //   });
+      //   return;
+      // }
 
       // 获取图片信息
       wx.getImageInfo({
