@@ -391,7 +391,56 @@ Component({
         gridCellHeight: newHeight
       }, this.redrawCanvas);
     },
-
+    test(e) {
+      const param = e.currentTarget.dataset.param;
+      console.log('接收到的参数:', param);
+      if (param == 'add') {
+        this.setData({
+          gridCellWidth: this.data.gridCellWidth + 0.2
+        }, this.redrawCanvas())
+      } else {
+        this.setData({
+          gridCellWidth: this.data.gridCellWidth - 0.2
+        }, this.redrawCanvas())
+      }
+    },
+    test1(e) {
+      const param = e.currentTarget.dataset.param;
+      console.log('接收到的参数:', param);
+      if (param == 'add') {
+        this.setData({
+          gridCellHeight: this.data.gridCellHeight + 0.2
+        }, this.redrawCanvas())
+      } else {
+        this.setData({
+          gridCellHeight: this.data.gridCellHeight - 0.2
+        }, this.redrawCanvas())
+      }
+    },
+    movwXAxis(e) {
+      const param = e.currentTarget.dataset.param;
+      if (param === 'left') {
+        this.setData({
+          gridOffsetX: this.data.gridOffsetX - 1
+        }, this.redrawCanvas())
+      } else {
+        this.setData({
+          gridOffsetX: this.data.gridOffsetX + 1
+        }, this.redrawCanvas())
+      }
+    },
+    movwYAxis(e) {
+      const param = e.currentTarget.dataset.param;
+      if (param === 'down') {
+        this.setData({
+          gridOffsetY: this.data.gridOffsetY - 1
+        }, this.redrawCanvas())
+      } else {
+        this.setData({
+          gridOffsetY: this.data.gridOffsetY + 1
+        }, this.redrawCanvas())
+      }
+    },
     // 移动网格位置
     onAxisChange(e) {
       if (!this.data.tempFilePath) return;

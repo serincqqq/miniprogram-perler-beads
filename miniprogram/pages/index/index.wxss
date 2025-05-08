@@ -508,6 +508,11 @@
   margin-right: 10rpx;
 }
 
+.justify-btn {
+  padding: 10px;
+
+}
+
 .grid-slider {
   margin: 20px;
   width: 80%;
