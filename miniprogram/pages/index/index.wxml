@@ -47,10 +47,10 @@
   <!-- 网格控制面板 -->
   <view class="grid-controls">
     <view class="control-section">
-      <text class="section-title">单元格边界微调</text>
+      <h3>单元格边界微调</h3>
       <view class="slider-row">
         <span class="justify-btn" data-param="des" bind:tap="changeGridWidth">-</span>
-        <text class="slider-label">当前格子宽度{{gridCellWidth.toFixed(2)}}</text>
+        <span class="slider-label">当前格子宽度{{gridCellWidth}}</span>
         <span class="justify-btn" data-param="add" bind:tap="changeGridWidth">+</span>
       </view>
       <view class="slider-row">
@@ -58,18 +58,18 @@
         <text class="slider-label">当前格子高度{{gridCellHeight}}</text>
         <span class="justify-btn" data-param="add" bind:tap="changeGridHeight">+</span>
       </view>
-      <view class="axis-move-container">
-        <view class="slider-row"> <span data-param="left" bind:tap="movwXAxis">←</span>
-          <text class="slider-label">移动x轴(左/右）</text>
-          <span data-param="right" bind:tap="movwXAxis">→</span>
-        </view>
-
-        <view class="axis-move"> <span data-param="top" bind:tap="movwYAxis">←</span>
-          <p>移动y轴(上/下）</p>
-          <span data-param="down" bind:tap="movwYAxis">→</span>
-        </view>
-
+      <view class="slider-row">
+        <span data-param="left" bind:tap="movwXAxis" class="justify-btn">←</span>
+        <text class="slider-label">移动x轴(左/右）</text>
+        <span data-param="right" bind:tap="movwXAxis" class="justify-btn">→</span>
       </view>
+      <view class="slider-row">
+        <span data-param="down" bind:tap="movwYAxis" class="justify-btn">↓</span>
+        <text class="slider-label">移动y轴(上/下）</text>
+        <span data-param="top" bind:tap="movwYAxis" class="justify-btn">↑</span>
+      </view>
+
+
     </view>
     <button size="mini" bindtap="resetMainAxes" class="reset-button">重置边界</button>
     <button class="setting-button" size="mini" type="primary" bindtap="exportImg">导出</button>

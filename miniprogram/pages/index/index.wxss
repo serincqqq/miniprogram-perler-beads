@@ -297,8 +297,6 @@
 }
 
 .grid-controls {
-  margin-top: 15px;
-  width: 90%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -307,9 +305,11 @@
 .control-section {
   margin-bottom: 10px;
   width: 100%;
+  gap: 10rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
 }
 
 .section-title {
@@ -501,6 +501,11 @@
   justify-content: center;
   font-size: 30rpx;
   margin-bottom: 10rpx;
+
+}
+
+.justify-btn {
+  font-size: 40rpx;
 }
 
 .axis-move-container {
