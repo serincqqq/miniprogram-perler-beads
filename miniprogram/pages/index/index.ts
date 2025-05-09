@@ -10,7 +10,15 @@ Page({
     gridSize: 52,
     confirmedGridSize: 52,
     mergeLevel: 30,
-    paletteOptions: ['全色系291色', '简化色系100色'],
+    //色板选择器
+    // paletteOptions: ['全色系291色', '简化色系100色'],
+    paletteOptions: [
+      { name: '全色系291色', keys: 'allPaletteKeys' },
+      { name: '168色', keys: 'palette168Keys' },
+      { name: '144色', keys: 'palette144Keys' },
+      { name: '96色', keys: 'palette96Keys' },
+      { name: '72色', keys: 'palette72Keys' }
+    ],
     paletteIndex: 0,
     canvasWidth: 300,
     canvasHeight: 300,
@@ -153,6 +161,7 @@ Page({
 
   onPaletteChange(e: WechatMiniprogram.PickerChange) {
     this.setData({ paletteIndex: parseInt(e.detail.value as string, 10) });
+
   },
 
   onModeChange(e: WechatMiniprogram.PickerChange) {
