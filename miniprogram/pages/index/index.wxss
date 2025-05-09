@@ -173,13 +173,13 @@
   justify-content: space-between;
   /* 内容两端对齐 */
   align-items: center;
-  width: 100%;
+  width: 430rpx;
 }
 
 .picker-arrow {
-  width: 12px;
-  height: 12px;
-  opacity: 0.6;
+  float: right;
+  width: 30rpx;
+  height: 30rpx;
 }
 
 .result-container {

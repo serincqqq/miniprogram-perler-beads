@@ -28,10 +28,10 @@
     <view class="setting-item">
       <text class="setting-label">选择色板:</text>
       <view class="setting-control">
-        <picker class="setting-picker" mode="selector" range="{{paletteOptions}}" value="{{paletteIndex}}" bindchange="onPaletteChange">
+        <picker class="setting-picker" bindchange="onPaletteChange" value="{{paletteIndex}}" range="{{paletteOptions}}">
           <view class="picker-content">
-            {{paletteOptions[paletteIndex]}}
-            <!-- <image class="picker-arrow" src="/images/down-arrow.png"></image> -->
+            <text>{{paletteOptions[paletteIndex]}}</text>
+            <image class="picker-arrow" src="/static/down.png" />
           </view>
         </picker>
       </view>

@@ -12,8 +12,6 @@ Page({
     mergeLevel: 30,
     paletteOptions: ['全色系291色', '简化色系100色'],
     paletteIndex: 0,
-    modeOptions: ['卡通 (主色)', '写实 (细节优先)'],
-    modeIndex: 0,
     canvasWidth: 300,
     canvasHeight: 300,
     imagePath: '',
