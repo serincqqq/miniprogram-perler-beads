@@ -28,8 +28,9 @@ Page({
 
     // 新增：网格调整参数
     gridCellWidth: 15.00,    // 网格单元格宽度（像素）
-    formattedWidth: "",// 存储格式化后的值
+    formattedGridCellWidth: "15.00", // 用于显示的格式化宽度
     gridCellHeight: 15.00,   // 网格单元格高度（像素）
+    formattedGridCellHeight: "15.00", // 用于显示的格式化高度
     gridOffsetX: 0,       // 网格X偏移量
     gridOffsetY: 0,       // 网格Y偏移量
 
@@ -122,27 +123,24 @@ Page({
   confirmGridSize() {
     this.setData({ confirmedGridSize: this.data.gridSize }, () => {
       if (this.data.tempFilePath) {
-        // 使用用户输入的网格数重新计算网格尺寸
         const { canvasWidth, canvasHeight, confirmedGridSize } = this.data;
-
-        // 获取图片计算比例
         wx.getImageInfo({
           src: this.data.tempFilePath,
           success: (imgRes) => {
             const imgWidth = imgRes.width;
             const imgHeight = imgRes.height;
-
-            // 根据确认的网格数设置网格大小
             const gridCellWidth = canvasWidth / confirmedGridSize;
             const numVerticalGrids = confirmedGridSize * (imgHeight / imgWidth);
             const gridCellHeight = canvasHeight / numVerticalGrids;
 
             this.setData({
               gridCellWidth: gridCellWidth,
+              formattedGridCellWidth: gridCellWidth.toFixed(2),
               gridCellHeight: gridCellHeight,
+              formattedGridCellHeight: gridCellHeight.toFixed(2),
               gridOffsetX: 0,
               gridOffsetY: 0
-            }, () => this.redrawCanvas()); // 修正回调
+            }, () => this.redrawCanvas());
           }
         });
       }
@@ -179,7 +177,10 @@ Page({
 
     // 如果已有校准数据，直接使用
     if (this.data.gridCellWidth > 0 && this.data.gridCellHeight > 0) {
-      this.redrawCanvas();
+      this.setData({
+        formattedGridCellWidth: this.data.gridCellWidth.toFixed(2),
+        formattedGridCellHeight: this.data.gridCellHeight.toFixed(2)
+      }, () => this.redrawCanvas());
       return;
     }
 
@@ -199,8 +200,10 @@ Page({
 
         this.setData({
           gridCellWidth: gridCellWidth,
-          gridCellHeight: gridCellHeight
-        }, () => this.redrawCanvas()); // 修正回调
+          formattedGridCellWidth: gridCellWidth.toFixed(2),
+          gridCellHeight: gridCellHeight,
+          formattedGridCellHeight: gridCellHeight.toFixed(2)
+        }, () => this.redrawCanvas());
       }
     });
   },
@@ -331,13 +334,27 @@ Page({
   // 网格控制方法
   changeGridWidth(e: WechatMiniprogram.TouchEvent) {
     const param = e.currentTarget.dataset.param as string;
-    const newWidth = param === 'add' ? this.data.gridCellWidth + 0.2 : this.data.gridCellWidth - 0.2;
-    this.setData({ gridCellWidth: Math.max(0.5, newWidth) }, () => this.redrawCanvas());
+    let newWidth = param === 'add' ? this.data.gridCellWidth + 0.2 : this.data.gridCellWidth - 0.2;
+    // 运算后，先转为两位小数的数字，再进行后续判断和存储
+    newWidth = parseFloat(newWidth.toFixed(2));
+
+    const clampedWidth = Math.max(0.5, newWidth);
+    this.setData({
+      gridCellWidth: clampedWidth,
+      formattedGridCellWidth: clampedWidth.toFixed(2)
+    }, () => this.redrawCanvas());
   },
   changeGridHeight(e: WechatMiniprogram.TouchEvent) {
     const param = e.currentTarget.dataset.param as string;
-    const newHeight = param === 'add' ? this.data.gridCellHeight + 0.2 : this.data.gridCellHeight - 0.2;
-    this.setData({ gridCellHeight: newHeight }, () => this.redrawCanvas());
+    let newHeight = param === 'add' ? this.data.gridCellHeight + 0.2 : this.data.gridCellHeight - 0.2;
+    // 运算后，先转为两位小数的数字，再进行后续判断和存储
+    newHeight = parseFloat(newHeight.toFixed(2));
+
+    const clampedHeight = Math.max(0.5, newHeight);
+    this.setData({
+      gridCellHeight: clampedHeight,
+      formattedGridCellHeight: clampedHeight.toFixed(2)
+    }, () => this.redrawCanvas());
   },
   movwXAxis(e: WechatMiniprogram.TouchEvent) {
     const param = e.currentTarget.dataset.param as string;
@@ -375,7 +392,9 @@ Page({
 
         this.setData({
           gridCellWidth: gridCellWidth,
+          formattedGridCellWidth: gridCellWidth.toFixed(2),
           gridCellHeight: gridCellHeight,
+          formattedGridCellHeight: gridCellHeight.toFixed(2),
           gridOffsetX: 0,
           gridOffsetY: 0
         }, () => this.redrawCanvas());
@@ -440,13 +459,20 @@ Page({
             const calculatedCanvasHeight = containerWidth * (imgHeight / imgWidth);
 
             // 设置数据并更新画布
+            const rawCellWidth = Number(cellWidthPx) / 2;
+            const rawCellHeight = Number(cellHeightPx) / 2; // 修正：之前这里也用了 cellWidthPx
+
+            const actualCellWidth = parseFloat(rawCellWidth.toFixed(2));
+            const actualCellHeight = parseFloat(rawCellHeight.toFixed(2));
+
             this.setData({
               imagePath: this.data.tempFilePath,
               canvasWidth: containerWidth,
               canvasHeight: calculatedCanvasHeight,
-              gridCellWidth: Number(cellWidthPx) / 2,
-              gridCellHeight: Number(cellWidthPx) / 2,
-
+              gridCellWidth: actualCellWidth, // 使用修正后的值
+              gridCellHeight: actualCellHeight, // 使用修正后的值
+              formattedGridCellWidth: actualCellWidth.toFixed(2),
+              formattedGridCellHeight: actualCellHeight.toFixed(2),
               gridOffsetX: 0,
               gridOffsetY: 0,
               showCalibrationModal: false
@@ -556,7 +582,6 @@ Page({
 
     const exportCanvasWidth = canvasWidth * exportScaleFactor;
     const exportCanvasHeight = canvasHeight * exportScaleFactor;
-    console.log('dd1', exportCanvasWidth, exportCanvasHeight)
     const selectedPaletteOption = paletteOptions[paletteIndex];
     const selectedPaletteKey = selectedPaletteOption.key;
     let activePaletteKeys: string[] = [];
@@ -589,7 +614,6 @@ Page({
       // 标准方式创建，如果 linter 报错但实际可用，则优先使用
       exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: exportCanvasWidth, height: exportCanvasHeight });
       exportCtx = exportCanvasNode.getContext('2d');
-      console.log('ff', exportCanvasNode)
     } catch (e) {
       console.warn("Standard OffscreenCanvas creation failed, trying alternative:", e);
       // 兼容性/Linter 严格模式下的备选方案
@@ -725,7 +749,6 @@ Page({
   },
 
   onLoad() {
-    console.log("页面加载");
     const sysInfo = wx.getSystemInfoSync();
     this.dpr = sysInfo.pixelRatio || 1;
     console.log('Device Pixel Ratio:', this.dpr);
