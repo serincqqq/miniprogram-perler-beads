@@ -27,9 +27,9 @@ Page({
     imagePath: '',
 
     // 新增：网格调整参数
-    gridCellWidth: 15.001,    // 网格单元格宽度（像素）
+    gridCellWidth: 15.00,    // 网格单元格宽度（像素）
     formattedWidth: "",// 存储格式化后的值
-    gridCellHeight: 15.01,   // 网格单元格高度（像素）
+    gridCellHeight: 15.00,   // 网格单元格高度（像素）
     gridOffsetX: 0,       // 网格X偏移量
     gridOffsetY: 0,       // 网格Y偏移量
 
@@ -329,38 +329,6 @@ Page({
   },
 
   // 网格控制方法
-
-  // 增大网格尺寸
-  increaseGridSize() {
-    if (!this.data.tempFilePath) return;
-
-    const newWidth = this.data.gridCellWidth * 1.1;
-    const newHeight = this.data.gridCellHeight * 1.1;
-
-    this.setData({
-      gridCellWidth: newWidth,
-      gridCellHeight: newHeight
-    }, () => this.redrawCanvas());
-  },
-
-  // 减小网格尺寸
-  decreaseGridSize() {
-    if (!this.data.tempFilePath) return;
-
-    // 防止网格过小
-    if (this.data.gridCellWidth < 1 || this.data.gridCellHeight < 1) {
-      wx.showToast({ title: '网格已达最小尺寸', icon: 'none' });
-      return;
-    }
-
-    const newWidth = this.data.gridCellWidth / 1.1;
-    const newHeight = this.data.gridCellHeight / 1.1;
-
-    this.setData({
-      gridCellWidth: newWidth,
-      gridCellHeight: newHeight
-    }, () => this.redrawCanvas());
-  },
   changeGridWidth(e: WechatMiniprogram.TouchEvent) {
     const param = e.currentTarget.dataset.param as string;
     const newWidth = param === 'add' ? this.data.gridCellWidth + 0.2 : this.data.gridCellWidth - 0.2;
@@ -369,7 +337,7 @@ Page({
   changeGridHeight(e: WechatMiniprogram.TouchEvent) {
     const param = e.currentTarget.dataset.param as string;
     const newHeight = param === 'add' ? this.data.gridCellHeight + 0.2 : this.data.gridCellHeight - 0.2;
-    this.setData({ gridCellHeight: Math.max(0.5, newHeight) }, () => this.redrawCanvas());
+    this.setData({ gridCellHeight: newHeight }, () => this.redrawCanvas());
   },
   movwXAxis(e: WechatMiniprogram.TouchEvent) {
     const param = e.currentTarget.dataset.param as string;
@@ -640,7 +608,7 @@ Page({
     }
 
 
-    const img = wx.createImage(); // 使用 wx.createImage()
+    const img = this.canvas.createImage(); // 使用 wx.createImage()
     img.src = this.data.imagePath;
 
     await new Promise<void>((resolve, reject) => {
@@ -735,25 +703,25 @@ Page({
       exportCtx.fillText(cell.colorCode, ex + ew / 2, ey + eh / 2);
     });
 
-    // wx.canvasToTempFilePath({
-    //   canvas: exportCanvasNode, // 使用离屏 canvas
-    //   success: (res) => {
-    //     wx.hideLoading();
-    //     wx.saveImageToPhotosAlbum({
-    //       filePath: res.tempFilePath,
-    //       success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
-    //       fail: (err) => {
-    //         console.error('保存图片失败:', err);
-    //         wx.showToast({ title: '保存失败', icon: 'none' });
-    //       }
-    //     });
-    //   },
-    //   fail: (err) => {
-    //     wx.hideLoading();
-    //     console.error('导出为临时文件失败:', err);
-    //     wx.showToast({ title: '导出失败', icon: 'none' });
-    //   }
-    // });
+    wx.canvasToTempFilePath({
+      canvas: exportCanvasNode, // 使用离屏 canvas
+      success: (res) => {
+        wx.hideLoading();
+        wx.saveImageToPhotosAlbum({
+          filePath: res.tempFilePath,
+          success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
+          fail: (err) => {
+            console.error('保存图片失败:', err);
+            wx.showToast({ title: '保存失败', icon: 'none' });
+          }
+        });
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        console.error('导出为临时文件失败:', err);
+        wx.showToast({ title: '导出失败', icon: 'none' });
+      }
+    });
   },
 
   onLoad() {
