@@ -1,10 +1,11 @@
 # 像素拼豆辅助小程序 (Perler Beads Helper Mini Program)
 ## 目前效果
+
 **原图：**
-<img width="580" alt="7531746622642_ pic" src="https://github.com/user-attachments/assets/b08be2bf-206e-4761-ab6c-fa7bfdc7c2ed" />
+<img width="300" alt="7531746622642_ pic" src="https://github.com/user-attachments/assets/b08be2bf-206e-4761-ab6c-fa7bfdc7c2ed" />
 
 **带色号的拼豆网格图：**
-![61](https://github.com/user-attachments/assets/5efbd014-2023-41dc-8155-b7364f6bbb4b)
+<img width="300" alt="网格图" src="https://github.com/user-attachments/assets/5efbd014-2023-41dc-8155-b7364f6bbb4b" />
 
 ## 项目介绍
 
