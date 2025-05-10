@@ -459,9 +459,6 @@ Page({
           // 注意：calibrationImage的样式设置了transform: scale(2)，所以这里需要除以2
           const scaleX = imgWidth / (containerWidth / 2);
           const scaleY = imgHeight / (containerHeight / 2);
-          // 计算实际图片中单元格的像素尺寸
-          const imgCellWidth = Number(cellWidthPx) * scaleX;
-          const imgCellHeight = Number(cellHeightPx) * scaleY;
 
           // 计算画布的尺寸
           const query = wx.createSelectorQuery().in(this);
@@ -584,11 +581,14 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '生成中...' });
+    // wx.showLoading({ title: '生成中...' });
 
     const { canvasWidth, canvasHeight, gridCellWidth, gridCellHeight, gridOffsetX, gridOffsetY, paletteIndex, paletteOptions } = this.data;
+    const exportScaleFactor = 3; // 图片导出放大倍数，可以调整，例如 2 或 3
 
-    // 1. Determine selected palette
+    const exportCanvasWidth = canvasWidth * exportScaleFactor;
+    const exportCanvasHeight = canvasHeight * exportScaleFactor;
+    console.log('dd1', exportCanvasWidth, exportCanvasHeight)
     const selectedPaletteOption = paletteOptions[paletteIndex];
     const selectedPaletteKey = selectedPaletteOption.key;
     let activePaletteKeys: string[] = [];
@@ -602,7 +602,6 @@ Page({
       activePaletteKeys = Object.keys(beadPaletteData);
     }
 
-    // 2. Prepare palette RGB map
     const paletteRgbMap: { [key: string]: { r: number; g: number; b: number } } = {};
     activePaletteKeys.forEach(key => {
       const hexColor = (beadPaletteData as any)[key];
@@ -614,52 +613,68 @@ Page({
       }
     });
 
-    // 3. Create offscreen canvas for export
-    const exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: canvasWidth, height: canvasHeight });
-    const exportCtx = exportCanvasNode.getContext('2d') as RenderingContext;
+    // 尝试创建 OffscreenCanvas
+    let exportCanvasNode: any;
+    let exportCtx: RenderingContext | null = null;
 
-    // 4. Draw original image to export canvas
-    const img = exportCanvasNode.createImage();
+    try {
+      // 标准方式创建，如果 linter 报错但实际可用，则优先使用
+      exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: exportCanvasWidth, height: exportCanvasHeight });
+      exportCtx = exportCanvasNode.getContext('2d');
+      console.log('ff', exportCanvasNode)
+    } catch (e) {
+      console.warn("Standard OffscreenCanvas creation failed, trying alternative:", e);
+      // 兼容性/Linter 严格模式下的备选方案
+      exportCanvasNode = wx.createOffscreenCanvas();
+      if (exportCanvasNode) {
+        exportCanvasNode.width = exportCanvasWidth;
+        exportCanvasNode.height = exportCanvasHeight;
+        exportCtx = exportCanvasNode.getContext('2d');
+      }
+    }
+
+    if (!exportCtx || !exportCanvasNode) {
+      wx.hideLoading();
+      wx.showToast({ title: '创建导出画布失败', icon: 'none' });
+      return;
+    }
+
+
+    const img = wx.createImage(); // 使用 wx.createImage()
     img.src = this.data.imagePath;
-    await new Promise<void>(resolve => img.onload = () => resolve());
-    exportCtx.imageSmoothingEnabled = false; // Keep pixel art sharp
-    exportCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
 
-    // 5. Get image data from the main canvas (this.ctx) for color picking
-    // Ensure the main canvas is up-to-date. A redraw might be good if state changed.
-    // this.redrawCanvas(); // Optional: ensure main canvas is current
-    // await new Promise(resolve => setTimeout(resolve, 50)); // Give it a moment to draw
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = (err: any) => {
+        console.error("Export image load error:", err);
+        reject(new Error("Failed to load image for export"));
+      };
+    });
 
-    const mainCanvasPhysicalWidth = this.canvas.width; // physical width (dpr scaled)
-    const mainCanvasPhysicalHeight = this.canvas.height; // physical height (dpr scaled)
+    exportCtx.imageSmoothingEnabled = false;
+    exportCtx.drawImage(img, 0, 0, exportCanvasWidth, exportCanvasHeight); // 绘制到放大后的画布
+
+    const mainCanvasPhysicalWidth = this.canvas.width;
+    const mainCanvasPhysicalHeight = this.canvas.height;
     const mainCanvasImageData = this.ctx.getImageData(0, 0, mainCanvasPhysicalWidth, mainCanvasPhysicalHeight);
 
-
     const cellDataForExport: Array<{ x: number; y: number; width: number; height: number; colorCode: string; cellRgb: { r: number; g: number; b: number } }> = [];
-
-    // Iterate through logical grid cells
-    // Adjust loop to correctly cover cells based on offset, similar to drawAdjustableGrid
     const firstVisibleX = (gridOffsetX % gridCellWidth) - gridCellWidth;
     const firstVisibleY = (gridOffsetY % gridCellHeight) - gridCellHeight;
 
     for (let y = firstVisibleY; y < canvasHeight; y += gridCellHeight) {
       for (let x = firstVisibleX; x < canvasWidth; x += gridCellWidth) {
-
         const cellLogicalX = x;
         const cellLogicalY = y;
-
-        // Define area of the cell to sample, clipped to canvas boundaries
         const sampleX = Math.max(0, cellLogicalX);
         const sampleY = Math.max(0, cellLogicalY);
         const sampleEndX = Math.min(canvasWidth, cellLogicalX + gridCellWidth);
         const sampleEndY = Math.min(canvasHeight, cellLogicalY + gridCellHeight);
-
         const sampleW = sampleEndX - sampleX;
         const sampleH = sampleEndY - sampleY;
 
         if (sampleW <= 0 || sampleH <= 0) continue;
 
-        // Convert logical sample rect to physical pixel rect for getImageData
         const physicalSampleX = Math.floor(sampleX * this.dpr);
         const physicalSampleY = Math.floor(sampleY * this.dpr);
         const physicalSampleW = Math.floor(sampleW * this.dpr);
@@ -698,42 +713,47 @@ Page({
       }
     }
 
-    // 6. Draw grid lines and color codes on export canvas
-    exportCtx.strokeStyle = 'black'; // Grid line color
-    exportCtx.lineWidth = 0.5;      // Grid line width (adjust as needed for sharpness)
+    exportCtx.strokeStyle = 'black';
+    exportCtx.lineWidth = 1 * exportScaleFactor; // 让线条在放大后视觉上保持一定粗细
 
-    const baseFontSize = Math.min(gridCellWidth, gridCellHeight) / 3; // Adjust divisor for text size
-    exportCtx.font = `${Math.max(5, Math.floor(baseFontSize))}px Arial`; // Min font size 5px
+    // 调整基础字体大小，并乘以放大倍数
+    const baseFontSize = (Math.min(gridCellWidth, gridCellHeight) / 3) * exportScaleFactor;
+    exportCtx.font = `${Math.max(5 * exportScaleFactor, Math.floor(baseFontSize))}px Arial`; // 最小字体也放大
     exportCtx.textAlign = 'center';
     exportCtx.textBaseline = 'middle';
 
     cellDataForExport.forEach(cell => {
-      exportCtx.strokeRect(cell.x, cell.y, cell.width, cell.height);
+      // 所有绘制坐标和尺寸都要乘以放大倍数
+      const ex = cell.x * exportScaleFactor;
+      const ey = cell.y * exportScaleFactor;
+      const ew = cell.width * exportScaleFactor;
+      const eh = cell.height * exportScaleFactor;
+
+      exportCtx.strokeRect(ex, ey, ew, eh);
       const brightness = (cell.cellRgb.r * 299 + cell.cellRgb.g * 587 + cell.cellRgb.b * 114) / 1000;
       exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
-      exportCtx.fillText(cell.colorCode, cell.x + cell.width / 2, cell.y + cell.height / 2);
+      exportCtx.fillText(cell.colorCode, ex + ew / 2, ey + eh / 2);
     });
 
-    // 7. Convert to temp file and save
-    wx.canvasToTempFilePath({
-      canvas: exportCanvasNode,
-      success: (res) => {
-        wx.hideLoading();
-        wx.saveImageToPhotosAlbum({
-          filePath: res.tempFilePath,
-          success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
-          fail: (err) => {
-            console.error('保存图片失败:', err);
-            wx.showToast({ title: '保存失败', icon: 'none' });
-          }
-        });
-      },
-      fail: (err) => {
-        wx.hideLoading();
-        console.error('导出为临时文件失败:', err);
-        wx.showToast({ title: '导出失败', icon: 'none' });
-      }
-    });
+    // wx.canvasToTempFilePath({
+    //   canvas: exportCanvasNode, // 使用离屏 canvas
+    //   success: (res) => {
+    //     wx.hideLoading();
+    //     wx.saveImageToPhotosAlbum({
+    //       filePath: res.tempFilePath,
+    //       success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
+    //       fail: (err) => {
+    //         console.error('保存图片失败:', err);
+    //         wx.showToast({ title: '保存失败', icon: 'none' });
+    //       }
+    //     });
+    //   },
+    //   fail: (err) => {
+    //     wx.hideLoading();
+    //     console.error('导出为临时文件失败:', err);
+    //     wx.showToast({ title: '导出失败', icon: 'none' });
+    //   }
+    // });
   },
 
   onLoad() {
@@ -742,31 +762,25 @@ Page({
     this.dpr = sysInfo.pixelRatio || 1;
     console.log('Device Pixel Ratio:', this.dpr);
 
-    // 确保在页面加载时，canvasWidth 和 canvasHeight 有基于屏幕的初始值
-    // 例如，可以基于 .result-container 的宽度
     const query = wx.createSelectorQuery().in(this);
     query.select('.result-container').boundingClientRect(res => {
+      let initialCanvasWidth = sysInfo.windowWidth * 0.9; // Default
+      let initialCanvasHeight = sysInfo.windowWidth * 0.9; // Default
+
       if (res && res.width) {
-        // 假设高度与宽度相同，或根据需要设置一个比例
-        this.setData({
-          canvasWidth: res.width,
-          canvasHeight: res.width // 或者一个合适的初始高度
-        }, () => {
-          setTimeout(() => {
-            this.preInitializeCanvas();
-          }, 100);
-        });
-      } else {
-        // Fallback if .result-container is not ready or has no width
-        this.setData({
-          canvasWidth: sysInfo.windowWidth * 0.9, // Default width
-          canvasHeight: sysInfo.windowWidth * 0.9 // Default height
-        }, () => {
-          setTimeout(() => {
-            this.preInitializeCanvas();
-          }, 100);
-        });
+        initialCanvasWidth = res.width;
+        // 假设高度与宽度相同，或根据图片比例动态计算，此处简单设为宽度
+        initialCanvasHeight = res.width;
       }
+
+      this.setData({
+        canvasWidth: initialCanvasWidth,
+        canvasHeight: initialCanvasHeight
+      }, () => {
+        setTimeout(() => {
+          this.preInitializeCanvas();
+        }, 100);
+      });
     }).exec();
   },
 })
