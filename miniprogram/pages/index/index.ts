@@ -2,7 +2,10 @@
 // import { Canvas, RenderingContext } from 'wechat-miniprogram/canvas';
 type Canvas = any; // 替换为正确导入的类型，或使用 any
 type RenderingContext = any; // 替换为正确导入的类型，或使用 any
-
+// 导入色板数据
+const PaletteKeys = require('../../utils/palette'); // 移除 .js 后缀
+const beadPaletteData = require('./beadPaletteData')
+// import beadPaletteData from './beadPaletteData';
 Page({
   data: {
     //画布相关变量
@@ -11,13 +14,12 @@ Page({
     confirmedGridSize: 52,
     mergeLevel: 30,
     //色板选择器
-    // paletteOptions: ['全色系291色', '简化色系100色'],
     paletteOptions: [
-      { name: '全色系291色', keys: 'allPaletteKeys' },
-      { name: '168色', keys: 'palette168Keys' },
-      { name: '144色', keys: 'palette144Keys' },
-      { name: '96色', keys: 'palette96Keys' },
-      { name: '72色', keys: 'palette72Keys' }
+      { name: '全色系291色', key: 'allPaletteKeys' }, // 'allPaletteKeys' 是一个自定义的键，表示使用 beadPaletteData 中的所有颜色
+      { name: '168色', key: 'palette168Keys' },
+      { name: '144色', key: 'palette144Keys' },
+      { name: '96色', key: 'palette96Keys' },
+      { name: '72色', key: 'palette72Keys' }
     ],
     paletteIndex: 0,
     canvasWidth: 300,
@@ -59,7 +61,7 @@ Page({
 
       console.log('预初始化Canvas: 节点已找到');
       this.canvas = res[0].node;
-      this.ctx = this.canvas.getContext('2d');
+      this.ctx = this.canvas!.getContext('2d');
 
       if (!this.ctx) {
         console.error('预初始化Canvas: 获取2D上下文失败');
@@ -68,9 +70,9 @@ Page({
       }
 
       // 设置初始尺寸
-      this.canvas.width = this.data.canvasWidth * this.dpr;
-      this.canvas.height = this.data.canvasHeight * this.dpr;
-      this.ctx.scale(this.dpr, this.dpr);
+      this.canvas!.width = this.data.canvasWidth * this.dpr;
+      this.canvas!.height = this.data.canvasHeight * this.dpr;
+      this.ctx!.scale(this.dpr, this.dpr);
     });
   },
 
@@ -92,12 +94,6 @@ Page({
         this.setData({
           tempFilePath: tempFilePath,
           calibrationImg: tempFilePath,
-          // 重置轴线位置
-          // leftAxis: 25,
-          // rightAxis: 35,
-          // topAxis: 25,
-          // bottomAxis: 35,
-          // 显示校准弹窗
           showCalibrationModal: true
         });
       },
@@ -144,10 +140,9 @@ Page({
             this.setData({
               gridCellWidth: gridCellWidth,
               gridCellHeight: gridCellHeight,
-              // 重置偏移，回到原点
               gridOffsetX: 0,
               gridOffsetY: 0
-            }, this.redrawCanvas);
+            }, () => this.redrawCanvas()); // 修正回调
           }
         });
       }
@@ -161,7 +156,6 @@ Page({
 
   onPaletteChange(e: WechatMiniprogram.PickerChange) {
     this.setData({ paletteIndex: parseInt(e.detail.value as string, 10) });
-
   },
 
   onModeChange(e: WechatMiniprogram.PickerChange) {
@@ -206,7 +200,7 @@ Page({
         this.setData({
           gridCellWidth: gridCellWidth,
           gridCellHeight: gridCellHeight
-        }, this.redrawCanvas());
+        }, () => this.redrawCanvas()); // 修正回调
       }
     });
   },
@@ -224,7 +218,7 @@ Page({
         return;
       }
       this.canvas = res[0].node;
-      this.ctx = this.canvas.getContext('2d');
+      this.ctx = this.canvas!.getContext('2d');
 
       if (!this.ctx) {
         console.error('initializeCanvas: 获取2D上下文失败');
@@ -346,7 +340,7 @@ Page({
     this.setData({
       gridCellWidth: newWidth,
       gridCellHeight: newHeight
-    }, this.redrawCanvas);
+    }, () => this.redrawCanvas());
   },
 
   // 减小网格尺寸
@@ -365,56 +359,32 @@ Page({
     this.setData({
       gridCellWidth: newWidth,
       gridCellHeight: newHeight
-    }, this.redrawCanvas);
+    }, () => this.redrawCanvas());
   },
-  changeGridWidth(e) {
-    const param = e.currentTarget.dataset.param;
-    if (param == 'add') {
-      this.setData({
-        gridCellWidth: this.data.gridCellWidth + 0.2
-
-      }, () => this.redrawCanvas())
-    } else {
-      this.setData({
-        gridCellWidth: this.data.gridCellWidth - 0.2
-      }, () => this.redrawCanvas())
-    }
+  changeGridWidth(e: WechatMiniprogram.TouchEvent) {
+    const param = e.currentTarget.dataset.param as string;
+    const newWidth = param === 'add' ? this.data.gridCellWidth + 0.2 : this.data.gridCellWidth - 0.2;
+    this.setData({ gridCellWidth: Math.max(0.5, newWidth) }, () => this.redrawCanvas());
   },
-  changeGridHeight(e) {
-    const param = e.currentTarget.dataset.param;
-    if (param == 'add') {
-      this.setData({
-        gridCellHeight: this.data.gridCellHeight + 0.2
-      }, () => this.redrawCanvas())
-    } else {
-      this.setData({
-        gridCellHeight: this.data.gridCellHeight - 0.2
-      }, () => this.redrawCanvas())
-    }
+  changeGridHeight(e: WechatMiniprogram.TouchEvent) {
+    const param = e.currentTarget.dataset.param as string;
+    const newHeight = param === 'add' ? this.data.gridCellHeight + 0.2 : this.data.gridCellHeight - 0.2;
+    this.setData({ gridCellHeight: Math.max(0.5, newHeight) }, () => this.redrawCanvas());
   },
-  movwXAxis(e) {
-    const param = e.currentTarget.dataset.param;
-    if (param === 'left') {
-      this.setData({
-        gridOffsetX: this.data.gridOffsetX - 1
-      }, () => this.redrawCanvas())
-    } else {
-      this.setData({
-        gridOffsetX: this.data.gridOffsetX + 1
-      }, () => this.redrawCanvas())
-    }
+  movwXAxis(e: WechatMiniprogram.TouchEvent) {
+    const param = e.currentTarget.dataset.param as string;
+    const newOffsetX = param === 'left' ? this.data.gridOffsetX - 1 : this.data.gridOffsetX + 1;
+    this.setData({ gridOffsetX: newOffsetX }, () => this.redrawCanvas());
   },
-  movwYAxis(e) {
-    const param = e.currentTarget.dataset.param;
-    if (param === 'down') {
-      this.setData({
-        gridOffsetY: this.data.gridOffsetY - 1
-      }, () => this.redrawCanvas())
-    } else {
-      this.setData({
-        gridOffsetY: this.data.gridOffsetY + 1
-      }, () => this.redrawCanvas())
+  movwYAxis(e: WechatMiniprogram.TouchEvent) {
+    const param = e.currentTarget.dataset.param as string; // 'down' for up, 'top' for down in UI
+    let newOffsetY = this.data.gridOffsetY;
+    if (param === 'down') { // UI '↓' means move grid content down, so offset decreases for visual upward movement
+      newOffsetY = this.data.gridOffsetY + 1;
+    } else { // UI '↑' means move grid content up, so offset increases for visual downward movement
+      newOffsetY = this.data.gridOffsetY - 1;
     }
+    this.setData({ gridOffsetY: newOffsetY }, () => this.redrawCanvas());
   },
 
 
@@ -440,7 +410,7 @@ Page({
           gridCellHeight: gridCellHeight,
           gridOffsetX: 0,
           gridOffsetY: 0
-        }, this.redrawCanvas);
+        }, () => this.redrawCanvas());
       }
     });
   },
@@ -457,10 +427,10 @@ Page({
     if (!this.data.tempFilePath) return;
 
     // 获取选定区域的像素尺寸
-    const cellWidth = (this.data.rightAxis - this.data.leftAxis).toFixed(1);
-    const cellHeight = (this.data.bottomAxis - this.data.topAxis).toFixed(1);
+    const cellWidthPx = (this.data.rightAxis - this.data.leftAxis);
+    const cellHeightPx = (this.data.bottomAxis - this.data.topAxis);
 
-    if (Number(cellWidth) <= 5.00 || Number(cellHeight) <= 5.00) {
+    if (cellWidthPx <= 5 || cellHeightPx <= 5) {
       wx.showToast({
         title: '请框选更大的区域',
         icon: 'none'
@@ -490,8 +460,8 @@ Page({
           const scaleX = imgWidth / (containerWidth / 2);
           const scaleY = imgHeight / (containerHeight / 2);
           // 计算实际图片中单元格的像素尺寸
-          const imgCellWidth = Number(cellWidth) * scaleX;
-          const imgCellHeight = Number(cellHeight) * scaleY;
+          const imgCellWidth = Number(cellWidthPx) * scaleX;
+          const imgCellHeight = Number(cellHeightPx) * scaleY;
 
           // 计算画布的尺寸
           const query = wx.createSelectorQuery().in(this);
@@ -509,8 +479,8 @@ Page({
               imagePath: this.data.tempFilePath,
               canvasWidth: containerWidth,
               canvasHeight: calculatedCanvasHeight,
-              gridCellWidth: Number(cellWidth) / 2,
-              gridCellHeight: Number(cellWidth) / 2,
+              gridCellWidth: Number(cellWidthPx) / 2,
+              gridCellHeight: Number(cellWidthPx) / 2,
 
               gridOffsetX: 0,
               gridOffsetY: 0,
@@ -540,8 +510,8 @@ Page({
   },
 
   // 开始移动轴线
-  startMoveAxis(e) {
-    const axis = e.currentTarget.dataset.axis;
+  startMoveAxis(e: WechatMiniprogram.TouchEvent) {
+    const axis = e.currentTarget.dataset.axis as string;
     this.setData({ isMovingAxis: axis });
 
   },
@@ -552,10 +522,9 @@ Page({
   },
 
   // 移动轴线
-  moveAxis(e) {
+  moveAxis(e: WechatMiniprogram.TouchEvent) {
     const { isMovingAxis } = this.data;
-    if (!isMovingAxis) return;
-
+    if (!isMovingAxis || !e.touches || e.touches.length === 0) return;
     const { clientX, clientY } = e.touches[0];
 
     // 获取校准图片容器的位置和尺寸
@@ -574,60 +543,230 @@ Page({
       const clampedY = Math.max(0, Math.min(height, posY));
 
       // 根据当前移动的轴更新位置
-      const data: any = {};
+      const dataUpdate: Partial<typeof this.data> = {};
 
       if (isMovingAxis === 'left') {
-        data.leftAxis = Math.min(clampedX, this.data.rightAxis - 10);
+        dataUpdate.leftAxis = Math.min(clampedX, this.data.rightAxis - 10);
       } else if (isMovingAxis === 'right') {
-        data.rightAxis = Math.max(clampedX, this.data.leftAxis + 10);
+        dataUpdate.rightAxis = Math.max(clampedX, this.data.leftAxis + 10);
       } else if (isMovingAxis === 'top') {
-        data.topAxis = Math.min(clampedY, this.data.bottomAxis - 10);
+        dataUpdate.topAxis = Math.min(clampedY, this.data.bottomAxis - 10);
       } else if (isMovingAxis === 'bottom') {
-        data.bottomAxis = Math.max(clampedY, this.data.topAxis + 10);
+        dataUpdate.bottomAxis = Math.max(clampedY, this.data.topAxis + 10);
       }
 
-      this.setData(data);
+      this.setData(dataUpdate);
     }).exec();
   },
 
-  exportImg() {
-    const query = wx.createSelectorQuery().in(this);
-    query.select('#previewCanvas').fields({ node: true, size: true }).exec((res) => {
-      if (res[0]) {
-        const canvas = res[0].node;
-        wx.canvasToTempFilePath({
-          canvas,
-          success: (res) => {
-            const tempFilePath = res.tempFilePath;
-            wx.saveImageToPhotosAlbum({
-              filePath: tempFilePath,
-              success: () => {
-                wx.showToast({
-                  title: '图片保存成功',
-                  icon: 'success'
-                });
-              },
-              fail: (err) => {
-                console.error('保存图片失败:', err);
-              }
-            });
-          },
+  // Helper: Convert HEX to RGB
+  hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  },
+
+  // Helper: Calculate color distance
+  colorDistance(rgb1: { r: number; g: number; b: number }, rgb2: { r: number; g: number; b: number }): number {
+    return Math.sqrt(
+      Math.pow(rgb1.r - rgb2.r, 2) +
+      Math.pow(rgb1.g - rgb2.g, 2) +
+      Math.pow(rgb1.b - rgb2.b, 2)
+    );
+  },
+
+  async exportImg() {
+    if (!this.ctx || !this.canvas || !this.data.imagePath) {
+      wx.showToast({ title: '请先选择并校准图片', icon: 'none' });
+      return;
+    }
+
+    wx.showLoading({ title: '生成中...' });
+
+    const { canvasWidth, canvasHeight, gridCellWidth, gridCellHeight, gridOffsetX, gridOffsetY, paletteIndex, paletteOptions } = this.data;
+
+    // 1. Determine selected palette
+    const selectedPaletteOption = paletteOptions[paletteIndex];
+    const selectedPaletteKey = selectedPaletteOption.key;
+    let activePaletteKeys: string[] = [];
+
+    if (selectedPaletteKey === 'allPaletteKeys') {
+      activePaletteKeys = Object.keys(beadPaletteData);
+    } else if ((PaletteKeys as any)[selectedPaletteKey]) {
+      activePaletteKeys = (PaletteKeys as any)[selectedPaletteKey];
+    } else {
+      console.warn(`Palette key "${selectedPaletteKey}" not found, defaulting to all keys.`);
+      activePaletteKeys = Object.keys(beadPaletteData);
+    }
+
+    // 2. Prepare palette RGB map
+    const paletteRgbMap: { [key: string]: { r: number; g: number; b: number } } = {};
+    activePaletteKeys.forEach(key => {
+      const hexColor = (beadPaletteData as any)[key];
+      if (hexColor) {
+        const rgb = this.hexToRgb(hexColor);
+        if (rgb) {
+          paletteRgbMap[key] = rgb;
+        }
+      }
+    });
+
+    // 3. Create offscreen canvas for export
+    const exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: canvasWidth, height: canvasHeight });
+    const exportCtx = exportCanvasNode.getContext('2d') as RenderingContext;
+
+    // 4. Draw original image to export canvas
+    const img = exportCanvasNode.createImage();
+    img.src = this.data.imagePath;
+    await new Promise<void>(resolve => img.onload = () => resolve());
+    exportCtx.imageSmoothingEnabled = false; // Keep pixel art sharp
+    exportCtx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+
+    // 5. Get image data from the main canvas (this.ctx) for color picking
+    // Ensure the main canvas is up-to-date. A redraw might be good if state changed.
+    // this.redrawCanvas(); // Optional: ensure main canvas is current
+    // await new Promise(resolve => setTimeout(resolve, 50)); // Give it a moment to draw
+
+    const mainCanvasPhysicalWidth = this.canvas.width; // physical width (dpr scaled)
+    const mainCanvasPhysicalHeight = this.canvas.height; // physical height (dpr scaled)
+    const mainCanvasImageData = this.ctx.getImageData(0, 0, mainCanvasPhysicalWidth, mainCanvasPhysicalHeight);
+
+
+    const cellDataForExport: Array<{ x: number; y: number; width: number; height: number; colorCode: string; cellRgb: { r: number; g: number; b: number } }> = [];
+
+    // Iterate through logical grid cells
+    // Adjust loop to correctly cover cells based on offset, similar to drawAdjustableGrid
+    const firstVisibleX = (gridOffsetX % gridCellWidth) - gridCellWidth;
+    const firstVisibleY = (gridOffsetY % gridCellHeight) - gridCellHeight;
+
+    for (let y = firstVisibleY; y < canvasHeight; y += gridCellHeight) {
+      for (let x = firstVisibleX; x < canvasWidth; x += gridCellWidth) {
+
+        const cellLogicalX = x;
+        const cellLogicalY = y;
+
+        // Define area of the cell to sample, clipped to canvas boundaries
+        const sampleX = Math.max(0, cellLogicalX);
+        const sampleY = Math.max(0, cellLogicalY);
+        const sampleEndX = Math.min(canvasWidth, cellLogicalX + gridCellWidth);
+        const sampleEndY = Math.min(canvasHeight, cellLogicalY + gridCellHeight);
+
+        const sampleW = sampleEndX - sampleX;
+        const sampleH = sampleEndY - sampleY;
+
+        if (sampleW <= 0 || sampleH <= 0) continue;
+
+        // Convert logical sample rect to physical pixel rect for getImageData
+        const physicalSampleX = Math.floor(sampleX * this.dpr);
+        const physicalSampleY = Math.floor(sampleY * this.dpr);
+        const physicalSampleW = Math.floor(sampleW * this.dpr);
+        const physicalSampleH = Math.floor(sampleH * this.dpr);
+
+        let rSum = 0, gSum = 0, bSum = 0, pixelCount = 0;
+        for (let py = physicalSampleY; py < physicalSampleY + physicalSampleH; py++) {
+          for (let px = physicalSampleX; px < physicalSampleX + physicalSampleW; px++) {
+            if (px < 0 || px >= mainCanvasPhysicalWidth || py < 0 || py >= mainCanvasPhysicalHeight) continue;
+            const dataIndex = (py * mainCanvasPhysicalWidth + px) * 4;
+            rSum += mainCanvasImageData.data[dataIndex];
+            gSum += mainCanvasImageData.data[dataIndex + 1];
+            bSum += mainCanvasImageData.data[dataIndex + 2];
+            pixelCount++;
+          }
+        }
+
+        if (pixelCount === 0) continue;
+        const avgR = Math.round(rSum / pixelCount);
+        const avgG = Math.round(gSum / pixelCount);
+        const avgB = Math.round(bSum / pixelCount);
+        const currentCellRgb = { r: avgR, g: avgG, b: avgB };
+
+        let closestCode = 'N/A';
+        let minDistance = Infinity;
+        if (Object.keys(paletteRgbMap).length > 0) {
+          for (const code in paletteRgbMap) {
+            const dist = this.colorDistance(currentCellRgb, paletteRgbMap[code]);
+            if (dist < minDistance) {
+              minDistance = dist;
+              closestCode = code;
+            }
+          }
+        }
+        cellDataForExport.push({ x: sampleX, y: sampleY, width: sampleW, height: sampleH, colorCode: closestCode, cellRgb: currentCellRgb });
+      }
+    }
+
+    // 6. Draw grid lines and color codes on export canvas
+    exportCtx.strokeStyle = 'black'; // Grid line color
+    exportCtx.lineWidth = 0.5;      // Grid line width (adjust as needed for sharpness)
+
+    const baseFontSize = Math.min(gridCellWidth, gridCellHeight) / 3; // Adjust divisor for text size
+    exportCtx.font = `${Math.max(5, Math.floor(baseFontSize))}px Arial`; // Min font size 5px
+    exportCtx.textAlign = 'center';
+    exportCtx.textBaseline = 'middle';
+
+    cellDataForExport.forEach(cell => {
+      exportCtx.strokeRect(cell.x, cell.y, cell.width, cell.height);
+      const brightness = (cell.cellRgb.r * 299 + cell.cellRgb.g * 587 + cell.cellRgb.b * 114) / 1000;
+      exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
+      exportCtx.fillText(cell.colorCode, cell.x + cell.width / 2, cell.y + cell.height / 2);
+    });
+
+    // 7. Convert to temp file and save
+    wx.canvasToTempFilePath({
+      canvas: exportCanvasNode,
+      success: (res) => {
+        wx.hideLoading();
+        wx.saveImageToPhotosAlbum({
+          filePath: res.tempFilePath,
+          success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
           fail: (err) => {
-            console.error('转换为临时文件失败:', err);
+            console.error('保存图片失败:', err);
+            wx.showToast({ title: '保存失败', icon: 'none' });
           }
         });
-      } else {
-        console.error('未找到 canvas 元素');
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        console.error('导出为临时文件失败:', err);
+        wx.showToast({ title: '导出失败', icon: 'none' });
       }
     });
   },
 
   onLoad() {
     console.log("页面加载");
-    this.dpr = wx.getSystemInfoSync().pixelRatio || 1;
-    setTimeout(() => {
-      this.preInitializeCanvas();
-    }, 100);
-  },
+    const sysInfo = wx.getSystemInfoSync();
+    this.dpr = sysInfo.pixelRatio || 1;
+    console.log('Device Pixel Ratio:', this.dpr);
 
+    // 确保在页面加载时，canvasWidth 和 canvasHeight 有基于屏幕的初始值
+    // 例如，可以基于 .result-container 的宽度
+    const query = wx.createSelectorQuery().in(this);
+    query.select('.result-container').boundingClientRect(res => {
+      if (res && res.width) {
+        // 假设高度与宽度相同，或根据需要设置一个比例
+        this.setData({
+          canvasWidth: res.width,
+          canvasHeight: res.width // 或者一个合适的初始高度
+        }, () => {
+          setTimeout(() => {
+            this.preInitializeCanvas();
+          }, 100);
+        });
+      } else {
+        // Fallback if .result-container is not ready or has no width
+        this.setData({
+          canvasWidth: sysInfo.windowWidth * 0.9, // Default width
+          canvasHeight: sysInfo.windowWidth * 0.9 // Default height
+        }, () => {
+          setTimeout(() => {
+            this.preInitializeCanvas();
+          }, 100);
+        });
+      }
+    }).exec();
+  },
 })
