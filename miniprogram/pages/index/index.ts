@@ -685,10 +685,7 @@ Page({
       const eh = cell.height * exportScaleFactor;
 
       exportCtx.strokeRect(ex, ey, ew, eh);
-
       exportCtx.fillStyle = 'white'
-      // const brightness = (cell.cellRgb.r * 299 + cell.cellRgb.g * 587 + cell.cellRgb.b * 114) / 1000;
-      // exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
       exportCtx.fillText(cell.colorCode, ex + ew / 2, ey + eh / 2);
     });
 
