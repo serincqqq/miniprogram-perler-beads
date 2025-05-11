@@ -372,36 +372,6 @@ Page({
     this.setData({ gridOffsetY: newOffsetY }, () => this.redrawCanvas());
   },
 
-
-  // 重置网格到初始状态
-  resetGrid() {
-    if (!this.data.tempFilePath) return;
-
-    const { canvasWidth, canvasHeight, confirmedGridSize } = this.data;
-
-    wx.getImageInfo({
-      src: this.data.tempFilePath,
-      success: (imgRes) => {
-        const imgWidth = imgRes.width;
-        const imgHeight = imgRes.height;
-
-        // 重新计算初始网格尺寸
-        const gridCellWidth = canvasWidth / confirmedGridSize;
-        const numVerticalGrids = confirmedGridSize * (imgHeight / imgWidth);
-        const gridCellHeight = canvasHeight / numVerticalGrids;
-
-        this.setData({
-          gridCellWidth: gridCellWidth,
-          formattedGridCellWidth: gridCellWidth.toFixed(2),
-          gridCellHeight: gridCellHeight,
-          formattedGridCellHeight: gridCellHeight.toFixed(2),
-          gridOffsetX: 0,
-          gridOffsetY: 0
-        }, () => this.redrawCanvas());
-      }
-    });
-  },
-
   // 关闭校准弹窗
   closeCalibrationModal() {
     this.setData({
@@ -439,13 +409,6 @@ Page({
             wx.showToast({ title: '无法获取校准容器尺寸', icon: 'none' });
             return;
           }
-
-          const { width: containerWidth, height: containerHeight } = rect;
-
-          // 根据容器和图片尺寸计算比例
-          // 注意：calibrationImage的样式设置了transform: scale(2)，所以这里需要除以2
-          const scaleX = imgWidth / (containerWidth / 2);
-          const scaleY = imgHeight / (containerHeight / 2);
 
           // 计算画布的尺寸
           const query = wx.createSelectorQuery().in(this);
@@ -578,7 +541,7 @@ Page({
     // wx.showLoading({ title: '生成中...' });
 
     const { canvasWidth, canvasHeight, gridCellWidth, gridCellHeight, gridOffsetX, gridOffsetY, paletteIndex, paletteOptions } = this.data;
-    const exportScaleFactor = 3; // 图片导出放大倍数，可以调整，例如 2 或 3
+    const exportScaleFactor = 2; // 图片导出放大倍数，可以调整，例如 2 或 3
 
     const exportCanvasWidth = canvasWidth * exportScaleFactor;
     const exportCanvasHeight = canvasHeight * exportScaleFactor;
@@ -706,7 +669,7 @@ Page({
     }
 
     exportCtx.strokeStyle = 'black';
-    exportCtx.lineWidth = 1 * exportScaleFactor; // 让线条在放大后视觉上保持一定粗细
+    exportCtx.lineWidth = 2; // 让线条在放大后视觉上保持一定粗细
 
     // 调整基础字体大小，并乘以放大倍数
     const baseFontSize = (Math.min(gridCellWidth, gridCellHeight) / 3) * exportScaleFactor;
@@ -722,8 +685,10 @@ Page({
       const eh = cell.height * exportScaleFactor;
 
       exportCtx.strokeRect(ex, ey, ew, eh);
-      const brightness = (cell.cellRgb.r * 299 + cell.cellRgb.g * 587 + cell.cellRgb.b * 114) / 1000;
-      exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
+
+      exportCtx.fillStyle = 'white'
+      // const brightness = (cell.cellRgb.r * 299 + cell.cellRgb.g * 587 + cell.cellRgb.b * 114) / 1000;
+      // exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
       exportCtx.fillText(cell.colorCode, ex + ew / 2, ey + eh / 2);
     });
 

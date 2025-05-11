@@ -46,7 +46,7 @@
   </view>
 
   <!-- 网格控制面板 -->
-  <view class="grid-controls">
+  <view wx:if="{{imagePath}}" class="grid-controls">
     <view class="control-section">
       <h3>单元格边界微调</h3>
       <view class="slider-row">
@@ -72,7 +72,6 @@
 
 
     </view>
-    <button size="mini" bindtap="resetMainAxes" class="reset-button">重置边界</button>
     <button class="setting-button" size="mini" type="primary" bindtap="exportImg">导出</button>
   </view>
 
