@@ -494,8 +494,9 @@ Page({
     const { canvasWidth, canvasHeight, gridCellWidth, gridCellHeight, gridOffsetX, gridOffsetY, paletteIndex, paletteOptions } = this.data;
     const EXPORT_CELL_SIZE_PX = 40; // 导出的每个格子的固定像素尺寸
     const MERGE_TOLERANCE_FACTOR = 0.25;
+    const REGION_MERGE_DIST = 20; // 可调，越大合并越激进
 
-    // --- 第一步：收集所有单元格的颜色和位置信息 (与之前逻辑类似) ---
+    // --- 第一步：收集所有单元格的颜色和位置信息 ---
     const selectedPaletteOption = paletteOptions[paletteIndex];
     const selectedPaletteKey = selectedPaletteOption.key;
     let activePaletteKeys: string[] = [];
@@ -532,7 +533,7 @@ Page({
       initialColorCode: string;
       finalColorCode: string;
       gridRow: number; gridCol: number;
-      // 原始 x, y, width, height 不再直接用于导出画布的绘制，但可保留用于其他目的
+      isBackground: boolean; // 新增：标记是否为背景
       originalX: number; originalY: number; originalW: number; originalH: number;
     }> = [];
 
@@ -593,6 +594,7 @@ Page({
           initialColorCode: closestCode,
           finalColorCode: closestCode,
           gridRow: currentRow, gridCol: currentCol,
+          isBackground: false, // 初始化为非背景
           originalX: sampleX, originalY: sampleY, originalW: sampleW, originalH: sampleH
         });
       }
@@ -604,7 +606,7 @@ Page({
       return;
     }
 
-    // --- 第二步：邻域颜色平滑处理 (与之前逻辑一致) ---
+    // --- 第二步：邻域颜色平滑处理 ---
     const maxGridRow = cellDataForProcessing.reduce((max, cell) => Math.max(max, cell.gridRow), 0);
     const maxGridCol = cellDataForProcessing.reduce((max, cell) => Math.max(max, cell.gridCol), 0);
 
@@ -644,9 +646,7 @@ Page({
       } else cell.finalColorCode = initialColorCode;
     }
 
-    // 区域合并参数
-    const REGION_MERGE_DIST = 20; // 可调，越大合并越激进
-
+    // --- 第三步：区域合并 ---
     // 1. 构建二维格子数组
     const gridRows = maxGridRow + 1;
     const gridCols = maxGridCol + 1;
@@ -714,7 +714,92 @@ Page({
       }
     }
 
-    // --- 第三步：创建导出画布并绘制 ---
+    // --- 第四步：背景色识别和标记 ---
+    // 1. 识别边缘颜色
+    // 检查图像的四条边缘，收集潜在的背景色
+    const potentialBackgroundColors: { [colorCode: string]: number } = {};
+    // 上边缘
+    for (let c = 0; c <= maxGridCol; c++) {
+      if (cellGrid[0] && cellGrid[0][c]) {
+        const code = cellGrid[0][c]!.finalColorCode;
+        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+      }
+    }
+    // 下边缘
+    for (let c = 0; c <= maxGridCol; c++) {
+      if (cellGrid[maxGridRow] && cellGrid[maxGridRow][c]) {
+        const code = cellGrid[maxGridRow][c]!.finalColorCode;
+        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+      }
+    }
+    // 左边缘
+    for (let r = 0; r <= maxGridRow; r++) {
+      if (cellGrid[r] && cellGrid[r][0]) {
+        const code = cellGrid[r][0]!.finalColorCode;
+        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+      }
+    }
+    // 右边缘
+    for (let r = 0; r <= maxGridRow; r++) {
+      if (cellGrid[r] && cellGrid[r][maxGridCol]) {
+        const code = cellGrid[r][maxGridCol]!.finalColorCode;
+        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+      }
+    }
+
+    // 找出出现最多的边缘颜色
+    let mostFrequentBgColor = '';
+    let maxCount = 0;
+    for (const code in potentialBackgroundColors) {
+      if (potentialBackgroundColors[code] > maxCount) {
+        maxCount = potentialBackgroundColors[code];
+        mostFrequentBgColor = code;
+      }
+    }
+
+    console.log("检测到的背景色:", mostFrequentBgColor);
+
+    // 2. 从边缘开始进行洪水填充，将连续的背景色区域标记为背景
+    const isVisitedForBg: boolean[][] = Array(maxGridRow + 1).fill(null).map(() => Array(maxGridCol + 1).fill(false));
+
+    // 洪水填充函数
+    const floodFillBackground = (startR: number, startC: number) => {
+      if (!cellGrid[startR] || !cellGrid[startR][startC] || isVisitedForBg[startR][startC]) return;
+      if (cellGrid[startR][startC]!.finalColorCode !== mostFrequentBgColor) return;
+
+      const queue: Array<[number, number]> = [[startR, startC]];
+      isVisitedForBg[startR][startC] = true;
+      cellGrid[startR][startC]!.isBackground = true;
+
+      while (queue.length > 0) {
+        const [r, c] = queue.shift()!;
+        const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // 右、下、左、上
+
+        for (const [dr, dc] of directions) {
+          const nr = r + dr;
+          const nc = c + dc;
+          if (nr >= 0 && nr <= maxGridRow && nc >= 0 && nc <= maxGridCol &&
+            !isVisitedForBg[nr][nc] && cellGrid[nr][nc] &&
+            cellGrid[nr][nc]!.finalColorCode === mostFrequentBgColor) {
+            isVisitedForBg[nr][nc] = true;
+            cellGrid[nr][nc]!.isBackground = true;
+            queue.push([nr, nc]);
+          }
+        }
+      }
+    };
+
+    // 从四条边缘开始填充
+    for (let c = 0; c <= maxGridCol; c++) {
+      floodFillBackground(0, c); // 上边缘
+      floodFillBackground(maxGridRow, c); // 下边缘
+    }
+    for (let r = 0; r <= maxGridRow; r++) {
+      floodFillBackground(r, 0); // 左边缘
+      floodFillBackground(r, maxGridCol); // 右边缘
+    }
+
+    // --- 第五步：创建导出画布并绘制 ---
     const numExportCols = maxGridCol + 1;
     const numExportRows = maxGridRow + 1;
     const exportCanvasTotalWidth = numExportCols * EXPORT_CELL_SIZE_PX;
@@ -741,17 +826,32 @@ Page({
       return;
     }
 
-    // 可选：填充背景色，如果有些格子没有数据
-    exportCtx.fillStyle = '#FFFFFF'; // 白色背景
-    exportCtx.fillRect(0, 0, exportCanvasTotalWidth, exportCanvasTotalHeight);
+    // 设置透明背景
+    exportCtx.clearRect(0, 0, exportCanvasTotalWidth, exportCanvasTotalHeight);
 
+    // 先绘制所有格子线（包括背景区域的格子线）
+    exportCtx.strokeStyle = 'rgba(0, 0, 0, 0.3)'; // 稍微透明一点的黑色线条
+    exportCtx.lineWidth = 1;
 
-    exportCtx.strokeStyle = 'black';
-    exportCtx.lineWidth = 1; // 在20x20的格子上，1px的线应该比较合适
+    // 绘制所有的格子线
+    for (let r = 0; r <= numExportRows; r++) {
+      const y = r * EXPORT_CELL_SIZE_PX;
+      exportCtx.beginPath();
+      exportCtx.moveTo(0, y);
+      exportCtx.lineTo(exportCanvasTotalWidth, y);
+      exportCtx.stroke();
+    }
 
-    const fontSize = Math.max(5, Math.floor(EXPORT_CELL_SIZE_PX / 3)); // 根据格子大小调整字体
-    // exportCtx.font = `${fontSize}px Arial`;
-    exportCtx.font = '14px Arial'
+    for (let c = 0; c <= numExportCols; c++) {
+      const x = c * EXPORT_CELL_SIZE_PX;
+      exportCtx.beginPath();
+      exportCtx.moveTo(x, 0);
+      exportCtx.lineTo(x, exportCanvasTotalHeight);
+      exportCtx.stroke();
+    }
+
+    // 然后绘制非背景区域的格子内容
+    exportCtx.font = '14px Arial';
     exportCtx.textAlign = 'center';
     exportCtx.textBaseline = 'middle';
 
@@ -759,20 +859,22 @@ Page({
       const exportX = cell.gridCol * EXPORT_CELL_SIZE_PX;
       const exportY = cell.gridRow * EXPORT_CELL_SIZE_PX;
 
-      // 填充格子背景色 (使用最终匹配到的色板颜色)
-      const cellColorHex = paletteRgbMap[cell.finalColorCode] ? (beadPaletteData as any)[cell.finalColorCode] : '#CCCCCC'; // 默认灰色
+      // 跳过背景格子的填充色和文本，但不跳过格子线（已在上面绘制）
+      if (cell.isBackground) continue;
+
+      // 填充格子背景色
+      const cellColorHex = paletteRgbMap[cell.finalColorCode] ? (beadPaletteData as any)[cell.finalColorCode] : '#CCCCCC';
       exportCtx.fillStyle = cellColorHex || '#CCCCCC';
       exportCtx.fillRect(exportX, exportY, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
 
-      // 绘制格子边框
+      // 重新绘制非背景格子的边框，让边框更清晰
+      exportCtx.strokeStyle = 'black';
       exportCtx.strokeRect(exportX, exportY, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
 
-      // 绘制文字 (颜色代码)
-      // 文字颜色根据填充的色块亮度决定
-      const cellRgbForText = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 }; // 默认灰色RGB
+      // 绘制文字（颜色代码）
+      const cellRgbForText = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 };
       const brightness = (cellRgbForText.r * 299 + cellRgbForText.g * 587 + cellRgbForText.b * 114) / 1000;
       exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
-
       exportCtx.fillText(cell.finalColorCode, exportX + EXPORT_CELL_SIZE_PX / 2, exportY + EXPORT_CELL_SIZE_PX / 2);
     }
 
