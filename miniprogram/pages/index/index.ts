@@ -644,6 +644,76 @@ Page({
       } else cell.finalColorCode = initialColorCode;
     }
 
+    // 区域合并参数
+    const REGION_MERGE_DIST = 20; // 可调，越大合并越激进
+
+    // 1. 构建二维格子数组
+    const gridRows = maxGridRow + 1;
+    const gridCols = maxGridCol + 1;
+    const regionVisited: boolean[][] = Array(gridRows).fill(null).map(() => Array(gridCols).fill(false));
+
+    // 2. 区域合并
+    for (let r = 0; r < gridRows; r++) {
+      for (let c = 0; c < gridCols; c++) {
+        if (regionVisited[r][c]) continue;
+        const startCell = cellGrid[r][c];
+        if (!startCell) continue;
+
+        // 区域BFS
+        const queue: { r: number, c: number }[] = [{ r, c }];
+        const regionCells: { r: number, c: number }[] = [];
+        const colorCount: { [key: string]: number } = {};
+        regionVisited[r][c] = true;
+
+        while (queue.length > 0) {
+          const { r: cr, c: cc } = queue.shift()!;
+          const cell = cellGrid[cr][cc];
+          if (!cell) continue;
+          regionCells.push({ r: cr, c: cc });
+          colorCount[cell.finalColorCode] = (colorCount[cell.finalColorCode] || 0) + 1;
+
+          // 只考虑上下左右
+          const neighbors = [
+            { nr: cr - 1, nc: cc },
+            { nr: cr + 1, nc: cc },
+            { nr: cr, nc: cc - 1 },
+            { nr: cr, nc: cc + 1 }
+          ];
+          for (const { nr, nc } of neighbors) {
+            if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols && !regionVisited[nr][nc]) {
+              const neighbor = cellGrid[nr][nc];
+              if (!neighbor) continue;
+              // 距离判断
+              const dist = this.colorDistance(
+                paletteRgbMap[cell.finalColorCode] || cell.avgRgb,
+                paletteRgbMap[neighbor.finalColorCode] || neighbor.avgRgb
+              );
+              if (dist < REGION_MERGE_DIST) {
+                regionVisited[nr][nc] = true;
+                queue.push({ r: nr, c: nc });
+              }
+            }
+          }
+        }
+
+        // 3. 区域主色归一
+        let dominantKey = '';
+        let maxCount = 0;
+        for (const key in colorCount) {
+          if (colorCount[key] > maxCount) {
+            maxCount = colorCount[key];
+            dominantKey = key;
+          }
+        }
+        if (!dominantKey) dominantKey = startCell.finalColorCode;
+
+        // 4. 区域内所有格子都归为主色
+        for (const { r: rr, c: cc } of regionCells) {
+          if (cellGrid[rr][cc]) cellGrid[rr][cc]!.finalColorCode = dominantKey;
+        }
+      }
+    }
+
     // --- 第三步：创建导出画布并绘制 ---
     const numExportCols = maxGridCol + 1;
     const numExportRows = maxGridRow + 1;
