@@ -107,57 +107,8 @@ Page({
     });
   },
 
-  onGridSizeInput(e: WechatMiniprogram.Input) {
-    let value = parseInt(e.detail.value, 10);
-    if (isNaN(value)) {
-      value = this.data.confirmedGridSize;
-    } else if (value < 10) {
-      value = 10;
-    } else if (value > 200) {
-      value = 200;
-    }
-    this.setData({ gridSize: value });
-    return value.toString();
-  },
-
-  confirmGridSize() {
-    this.setData({ confirmedGridSize: this.data.gridSize }, () => {
-      if (this.data.tempFilePath) {
-        const { canvasWidth, canvasHeight, confirmedGridSize } = this.data;
-        wx.getImageInfo({
-          src: this.data.tempFilePath,
-          success: (imgRes) => {
-            const imgWidth = imgRes.width;
-            const imgHeight = imgRes.height;
-            const gridCellWidth = canvasWidth / confirmedGridSize;
-            const numVerticalGrids = confirmedGridSize * (imgHeight / imgWidth);
-            const gridCellHeight = canvasHeight / numVerticalGrids;
-
-            this.setData({
-              gridCellWidth: gridCellWidth,
-              formattedGridCellWidth: gridCellWidth.toFixed(2),
-              gridCellHeight: gridCellHeight,
-              formattedGridCellHeight: gridCellHeight.toFixed(2),
-              gridOffsetX: 0,
-              gridOffsetY: 0
-            }, () => this.redrawCanvas());
-          }
-        });
-      }
-      wx.showToast({ title: '格子数已确认', icon: 'success', duration: 1000 });
-    });
-  },
-
-  onMergeLevelChange(e: WechatMiniprogram.SliderChange) {
-    this.setData({ mergeLevel: e.detail.value });
-  },
-
   onPaletteChange(e: WechatMiniprogram.PickerChange) {
     this.setData({ paletteIndex: parseInt(e.detail.value as string, 10) });
-  },
-
-  onModeChange(e: WechatMiniprogram.PickerChange) {
-    this.setData({ modeIndex: parseInt(e.detail.value as string, 10) });
   },
 
   // 更新Canvas尺寸和绘制
@@ -362,11 +313,11 @@ Page({
     this.setData({ gridOffsetX: newOffsetX }, () => this.redrawCanvas());
   },
   movwYAxis(e: WechatMiniprogram.TouchEvent) {
-    const param = e.currentTarget.dataset.param as string; // 'down' for up, 'top' for down in UI
+    const param = e.currentTarget.dataset.param as string;
     let newOffsetY = this.data.gridOffsetY;
-    if (param === 'down') { // UI '↓' means move grid content down, so offset decreases for visual upward movement
+    if (param === 'down') {
       newOffsetY = this.data.gridOffsetY + 1;
-    } else { // UI '↑' means move grid content up, so offset increases for visual downward movement
+    } else {
       newOffsetY = this.data.gridOffsetY - 1;
     }
     this.setData({ gridOffsetY: newOffsetY }, () => this.redrawCanvas());
@@ -538,15 +489,13 @@ Page({
       return;
     }
 
-    wx.showLoading({ title: '生成中...' }); // 恢复加载提示
+    wx.showLoading({ title: '生成中...' });
 
     const { canvasWidth, canvasHeight, gridCellWidth, gridCellHeight, gridOffsetX, gridOffsetY, paletteIndex, paletteOptions } = this.data;
-    const exportScaleFactor = 2;
-    const MERGE_TOLERANCE_FACTOR = 1; // 合并容差因子，可调整
+    const EXPORT_CELL_SIZE_PX = 40; // 导出的每个格子的固定像素尺寸
+    const MERGE_TOLERANCE_FACTOR = 0.25;
 
-    const exportCanvasWidth = canvasWidth * exportScaleFactor;
-    const exportCanvasHeight = canvasHeight * exportScaleFactor;
-
+    // --- 第一步：收集所有单元格的颜色和位置信息 (与之前逻辑类似) ---
     const selectedPaletteOption = paletteOptions[paletteIndex];
     const selectedPaletteKey = selectedPaletteOption.key;
     let activePaletteKeys: string[] = [];
@@ -556,7 +505,6 @@ Page({
     } else if ((PaletteKeys as any)[selectedPaletteKey]) {
       activePaletteKeys = (PaletteKeys as any)[selectedPaletteKey];
     } else {
-      console.warn(`Palette key "${selectedPaletteKey}" not found, defaulting to all keys.`);
       activePaletteKeys = Object.keys(beadPaletteData);
     }
 
@@ -569,48 +517,6 @@ Page({
       }
     });
 
-    let exportCanvasNode: any;
-    let exportCtx: RenderingContext | null = null;
-    try {
-      exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: exportCanvasWidth, height: exportCanvasHeight });
-      exportCtx = exportCanvasNode.getContext('2d');
-    } catch (e) {
-      console.warn("Standard OffscreenCanvas creation failed, trying alternative:", e);
-      exportCanvasNode = wx.createOffscreenCanvas(); // 无参数调用
-      if (exportCanvasNode) {
-        exportCanvasNode.width = exportCanvasWidth;
-        exportCanvasNode.height = exportCanvasHeight;
-        exportCtx = exportCanvasNode.getContext('2d');
-      }
-    }
-
-    if (!exportCtx || !exportCanvasNode) {
-      wx.hideLoading();
-      wx.showToast({ title: '创建导出画布失败', icon: 'none' });
-      return;
-    }
-
-    const img = this.canvas.createImage(); // 使用 wx.createImage()
-    img.src = this.data.imagePath;
-
-    try {
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = (err: any) => {
-          console.error("Export image load error:", err);
-          reject(new Error("Failed to load image for export"));
-        };
-      });
-    } catch (error: any) {
-      console.error(error.message || error);
-      wx.hideLoading();
-      wx.showToast({ title: '图片加载失败', icon: 'none' });
-      return;
-    }
-
-    exportCtx.imageSmoothingEnabled = false;
-    exportCtx.drawImage(img, 0, 0, exportCanvasWidth, exportCanvasHeight);
-
     const mainCanvasNode = this.canvas;
     if (!mainCanvasNode) {
       wx.hideLoading();
@@ -622,11 +528,12 @@ Page({
     const mainCanvasImageData = this.ctx!.getImageData(0, 0, mainCanvasPhysicalWidth, mainCanvasPhysicalHeight);
 
     const cellDataForProcessing: Array<{
-      x: number; y: number; width: number; height: number;
       avgRgb: { r: number; g: number; b: number };
       initialColorCode: string;
       finalColorCode: string;
       gridRow: number; gridCol: number;
+      // 原始 x, y, width, height 不再直接用于导出画布的绘制，但可保留用于其他目的
+      originalX: number; originalY: number; originalW: number; originalH: number;
     }> = [];
 
     const firstVisibleX = (gridOffsetX % gridCellWidth) - gridCellWidth;
@@ -671,8 +578,8 @@ Page({
         const currentAvgRgb = { r: avgR, g: avgG, b: avgB };
 
         let closestCode = 'N/A';
-        let minDistance = Infinity;
         if (Object.keys(paletteRgbMap).length > 0) {
+          let minDistance = Infinity;
           for (const code in paletteRgbMap) {
             const dist = this.colorDistance(currentAvgRgb, paletteRgbMap[code]);
             if (dist < minDistance) {
@@ -682,103 +589,122 @@ Page({
           }
         }
         cellDataForProcessing.push({
-          x: sampleX, y: sampleY, width: sampleW, height: sampleH,
           avgRgb: currentAvgRgb,
           initialColorCode: closestCode,
           finalColorCode: closestCode,
-          gridRow: currentRow, gridCol: currentCol
+          gridRow: currentRow, gridCol: currentCol,
+          originalX: sampleX, originalY: sampleY, originalW: sampleW, originalH: sampleH
         });
       }
     }
 
-    // --- 邻域颜色平滑处理 ---
+    if (cellDataForProcessing.length === 0) {
+      wx.hideLoading();
+      wx.showToast({ title: '没有可导出的单元格', icon: 'none' });
+      return;
+    }
+
+    // --- 第二步：邻域颜色平滑处理 (与之前逻辑一致) ---
     const maxGridRow = cellDataForProcessing.reduce((max, cell) => Math.max(max, cell.gridRow), 0);
     const maxGridCol = cellDataForProcessing.reduce((max, cell) => Math.max(max, cell.gridCol), 0);
 
     const cellGrid: (typeof cellDataForProcessing[0] | undefined)[][] = Array(maxGridRow + 1).fill(null).map(() => Array(maxGridCol + 1).fill(undefined));
     cellDataForProcessing.forEach(cell => {
-      if (cell.gridRow <= maxGridRow && cell.gridCol <= maxGridCol) { // Bounds check
+      if (cell.gridRow <= maxGridRow && cell.gridCol <= maxGridCol) {
         cellGrid[cell.gridRow][cell.gridCol] = cell;
       }
     });
 
     for (const cell of cellDataForProcessing) {
       const { gridRow, gridCol, avgRgb, initialColorCode } = cell;
-
       if (initialColorCode === 'N/A' || !paletteRgbMap[initialColorCode]) {
-        cell.finalColorCode = initialColorCode;
-        continue;
+        cell.finalColorCode = initialColorCode; continue;
       }
-
-      const neighborOffsets = [
-        [-1, -1], [-1, 0], [-1, 1],
-        [0, -1], [0, 1],
-        [1, -1], [1, 0], [1, 1]
-      ];
+      const neighborOffsets = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
       const neighborInitialCodes: string[] = [];
       for (const offset of neighborOffsets) {
-        const nr = gridRow + offset[0];
-        const nc = gridCol + offset[1];
+        const nr = gridRow + offset[0], nc = gridCol + offset[1];
         if (nr >= 0 && nr <= maxGridRow && nc >= 0 && nc <= maxGridCol && cellGrid[nr][nc]) {
           const neighborCell = cellGrid[nr][nc]!;
-          if (neighborCell.initialColorCode !== 'N/A') {
-            neighborInitialCodes.push(neighborCell.initialColorCode);
-          }
+          if (neighborCell.initialColorCode !== 'N/A') neighborInitialCodes.push(neighborCell.initialColorCode);
         }
       }
-
-      if (neighborInitialCodes.length === 0) {
-        cell.finalColorCode = initialColorCode;
-        continue;
-      }
-
+      if (neighborInitialCodes.length === 0) { cell.finalColorCode = initialColorCode; continue; }
       const codeCounts: { [code: string]: number } = {};
-      let maxCount = 0;
-      let dominantNeighborCode = neighborInitialCodes[0];
+      let maxCount = 0, dominantNeighborCode = neighborInitialCodes[0];
       neighborInitialCodes.forEach(nc => {
         codeCounts[nc] = (codeCounts[nc] || 0) + 1;
-        if (codeCounts[nc] > maxCount) {
-          maxCount = codeCounts[nc];
-          dominantNeighborCode = nc;
-        }
+        if (codeCounts[nc] > maxCount) { maxCount = codeCounts[nc]; dominantNeighborCode = nc; }
       });
-
       if (dominantNeighborCode && dominantNeighborCode !== initialColorCode && paletteRgbMap[dominantNeighborCode]) {
-        const distToInitialPaletteColor = this.colorDistance(avgRgb, paletteRgbMap[initialColorCode]);
-        const distToDominantNeighborPaletteColor = this.colorDistance(avgRgb, paletteRgbMap[dominantNeighborCode]);
+        const distToInitial = this.colorDistance(avgRgb, paletteRgbMap[initialColorCode]);
+        const distToDominant = this.colorDistance(avgRgb, paletteRgbMap[dominantNeighborCode]);
+        if (distToDominant < distToInitial * (1 + MERGE_TOLERANCE_FACTOR)) cell.finalColorCode = dominantNeighborCode;
+        else cell.finalColorCode = initialColorCode;
+      } else cell.finalColorCode = initialColorCode;
+    }
 
-        if (distToDominantNeighborPaletteColor < distToInitialPaletteColor * (1 + MERGE_TOLERANCE_FACTOR)) {
-          cell.finalColorCode = dominantNeighborCode;
-        } else {
-          cell.finalColorCode = initialColorCode;
-        }
-      } else {
-        cell.finalColorCode = initialColorCode;
+    // --- 第三步：创建导出画布并绘制 ---
+    const numExportCols = maxGridCol + 1;
+    const numExportRows = maxGridRow + 1;
+    const exportCanvasTotalWidth = numExportCols * EXPORT_CELL_SIZE_PX;
+    const exportCanvasTotalHeight = numExportRows * EXPORT_CELL_SIZE_PX;
+
+    let exportCanvasNode: any;
+    let exportCtx: RenderingContext | null = null;
+    try {
+      exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: exportCanvasTotalWidth, height: exportCanvasTotalHeight });
+      exportCtx = exportCanvasNode.getContext('2d');
+    } catch (e) {
+      console.warn("Standard OffscreenCanvas creation failed, trying alternative:", e);
+      exportCanvasNode = wx.createOffscreenCanvas();
+      if (exportCanvasNode) {
+        exportCanvasNode.width = exportCanvasTotalWidth;
+        exportCanvasNode.height = exportCanvasTotalHeight;
+        exportCtx = exportCanvasNode.getContext('2d');
       }
     }
-    // --- 平滑处理结束 ---
+
+    if (!exportCtx || !exportCanvasNode) {
+      wx.hideLoading();
+      wx.showToast({ title: '创建导出画布失败', icon: 'none' });
+      return;
+    }
+
+    // 可选：填充背景色，如果有些格子没有数据
+    exportCtx.fillStyle = '#FFFFFF'; // 白色背景
+    exportCtx.fillRect(0, 0, exportCanvasTotalWidth, exportCanvasTotalHeight);
+
 
     exportCtx.strokeStyle = 'black';
-    exportCtx.lineWidth = 1 * exportScaleFactor;
+    exportCtx.lineWidth = 1; // 在20x20的格子上，1px的线应该比较合适
 
-    const baseFontSize = (Math.min(gridCellWidth, gridCellHeight) / 3) * exportScaleFactor;
-    exportCtx.font = `${Math.max(5 * exportScaleFactor, Math.floor(baseFontSize))}px Arial`;
+    const fontSize = Math.max(5, Math.floor(EXPORT_CELL_SIZE_PX / 3)); // 根据格子大小调整字体
+    // exportCtx.font = `${fontSize}px Arial`;
+    exportCtx.font = '14px Arial'
     exportCtx.textAlign = 'center';
     exportCtx.textBaseline = 'middle';
 
-    cellDataForProcessing.forEach(cell => {
-      const ex = cell.x * exportScaleFactor;
-      const ey = cell.y * exportScaleFactor;
-      const ew = cell.width * exportScaleFactor;
-      const eh = cell.height * exportScaleFactor;
+    for (const cell of cellDataForProcessing) {
+      const exportX = cell.gridCol * EXPORT_CELL_SIZE_PX;
+      const exportY = cell.gridRow * EXPORT_CELL_SIZE_PX;
 
-      exportCtx.strokeRect(ex, ey, ew, eh);
+      // 填充格子背景色 (使用最终匹配到的色板颜色)
+      const cellColorHex = paletteRgbMap[cell.finalColorCode] ? (beadPaletteData as any)[cell.finalColorCode] : '#CCCCCC'; // 默认灰色
+      exportCtx.fillStyle = cellColorHex || '#CCCCCC';
+      exportCtx.fillRect(exportX, exportY, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
 
-      const brightness = (cell.avgRgb.r * 299 + cell.avgRgb.g * 587 + cell.avgRgb.b * 114) / 1000;
+      // 绘制格子边框
+      exportCtx.strokeRect(exportX, exportY, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
+
+      // 绘制文字 (颜色代码)
+      // 文字颜色根据填充的色块亮度决定
+      const cellRgbForText = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 }; // 默认灰色RGB
+      const brightness = (cellRgbForText.r * 299 + cellRgbForText.g * 587 + cellRgbForText.b * 114) / 1000;
       exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
 
-      exportCtx.fillText(cell.finalColorCode, ex + ew / 2, ey + eh / 2);
-    });
+      exportCtx.fillText(cell.finalColorCode, exportX + EXPORT_CELL_SIZE_PX / 2, exportY + EXPORT_CELL_SIZE_PX / 2);
+    }
 
     wx.canvasToTempFilePath({
       canvas: exportCanvasNode,
@@ -787,16 +713,12 @@ Page({
         wx.saveImageToPhotosAlbum({
           filePath: res.tempFilePath,
           success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
-          fail: (err) => {
-            console.error('保存图片失败:', err);
-            wx.showToast({ title: '保存失败', icon: 'none' });
-          }
+          fail: (err) => wx.showToast({ title: '保存失败: ' + err.errMsg, icon: 'none' })
         });
       },
       fail: (err) => {
         wx.hideLoading();
-        console.error('导出为临时文件失败:', err);
-        wx.showToast({ title: '导出失败', icon: 'none' });
+        wx.showToast({ title: '导出失败: ' + err.errMsg, icon: 'none' });
       }
     });
   },

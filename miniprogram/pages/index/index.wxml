@@ -14,16 +14,6 @@
   <!-- 参数设置区域 -->
   <view class="card-container">
 
-    <!-- 区域颜色合并 -->
-    <view class="setting-item slider-item">
-      <text class="setting-label">区域颜色合并: {{mergeLevel}}</text>
-      <view class="setting-control slider-group">
-        <text class="slider-label-min">少</text>
-        <slider class="setting-slider" value="{{mergeLevel}}" min="1" max="100" bindchange="onMergeLevelChange" show-value="{{false}}" activeColor="#8A2BE2" block-size="20" />
-        <text class="slider-label-max">多</text>
-      </view>
-    </view>
-
     <!-- 选择色板 -->
     <view class="setting-item">
       <text class="setting-label">选择色板:</text>
