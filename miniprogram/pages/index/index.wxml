@@ -36,17 +36,24 @@
   </view>
 
   <!-- 网格控制面板 -->
-  <view wx:if="{{imagePath}}" class="grid-controls">
+  <view class="grid-controls">
     <view class="control-section">
       <h3>单元格边界微调</h3>
       <view class="slider-row">
         <span class="justify-btn" data-param="des" bind:tap="changeGridWidth">-</span>
-        <span class="slider-label">当前格子宽度{{gridCellWidth}}</span>
+        <div class="slider-label">
+          <span>当前格子宽度</span>
+          <input class="cell-size-input" type="digit" value="{{gridCellWidth}}" data-param="width" bindblur="onGridCellBlur" />
+        </div>
+
         <span class="justify-btn" data-param="add" bind:tap="changeGridWidth">+</span>
       </view>
       <view class="slider-row">
         <span class="justify-btn" data-param="des" bind:tap="changeGridHeight">-</span>
-        <text class="slider-label">当前格子高度{{gridCellHeight}}</text>
+        <div class="slider-label">
+          <span>当前格子高度</span>
+          <input class="cell-size-input" type="digit" value="{{gridCellHeight}}" data-param="height" bindblur="onGridCellBlur" />
+        </div>
         <span class="justify-btn" data-param="add" bind:tap="changeGridHeight">+</span>
       </view>
       <view class="slider-row">

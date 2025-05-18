@@ -522,6 +522,15 @@
 .slider-label {
   color: #333;
   margin: 0 auto;
+  display: flex;
+}
+
+.cell-size-input {
+  margin-left: 4rpx;
+  width: 100rpx;
+  padding: 0 6rpx;
+  border: 1px solid #c4c7ce;
+  border-radius: 10rpx;
 }
 
 .grid-slider {

@@ -76,7 +76,24 @@ Page({
       this.ctx!.scale(this.dpr, this.dpr);
     });
   },
+  onGridCellBlur(e) {
+    const value = e.detail.value;
+    const type = e.currentTarget.dataset.param as string;
+    console.log('失焦时的值:', typeof value, type);
+    if (type === 'width') {
+      this.setData({
+        gridCellWidth: parseFloat(value),
+        // formattedGridCellWidth: value.toFixed(2)
+      }, () => this.redrawCanvas());
+    } else {
+      console.log('ddd')
+      this.setData({
+        gridCellHeight: parseFloat(value),
+        // formattedGridCellHeight: value.toFixed(2)
+      }, () => this.redrawCanvas());
+    }
 
+  },
   // 事件处理函数
   onChooseImage() {
     // 选择图片前，确保Canvas已经初始化
@@ -191,6 +208,7 @@ Page({
 
   // 重绘Canvas
   redrawCanvas() {
+    console.log('fff')
     if (!this.ctx || !this.canvas) {
       console.warn('redrawCanvas: Canvas未准备好，跳过绘制');
       return;
