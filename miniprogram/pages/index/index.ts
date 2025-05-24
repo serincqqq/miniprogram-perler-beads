@@ -15,7 +15,7 @@ Page({
     mergeLevel: 30,
     //色板选择器
     paletteOptions: [
-      { name: '全色系291色', key: 'allPaletteKeys' }, // 'allPaletteKeys' 是一个自定义的键，表示使用 beadPaletteData 中的所有颜色
+      { name: '221全实色', key: 'allPaletteKeys' }, // 'allPaletteKeys' 是一个自定义的键，表示使用 beadPaletteData 中的所有颜色
       { name: '168色', key: 'palette168Keys' },
       { name: '144色', key: 'palette144Keys' },
       { name: '96色', key: 'palette96Keys' },
@@ -43,6 +43,11 @@ Page({
     topAxis: 30,
     bottomAxis: 80,
     isMovingAxis: '',
+
+    // 新增：手动选择背景模式
+    manualBackgroundMode: false,
+    selectedBackgroundColor: '',
+    backgroundTolerance: 30,
   },
 
   // Canvas 和 context 作为组件实例的属性
@@ -94,18 +99,18 @@ Page({
     }
 
   },
-  // 事件处理函数
-  onChooseImage() {
+    // 事件处理函数
+    onChooseImage() {
     // 选择图片前，确保Canvas已经初始化
     if (!this.canvas || !this.ctx) {
       this.preInitializeCanvas();
     }
 
-    wx.chooseMedia({
-      count: 1,
-      mediaType: ['image'],
-      sourceType: ['album', 'camera'],
-      success: (res) => {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
 
         // 首先设置临时文件路径，以便显示在弹窗中
@@ -113,17 +118,17 @@ Page({
           tempFilePath: tempFilePath,
           calibrationImg: tempFilePath,
           showCalibrationModal: true
-        });
-      },
-      fail: (err) => {
-        console.error('选择图片失败:', err);
-        if (err.errMsg !== "chooseMedia:fail cancel") {
-          wx.showToast({ title: '选择图片失败', icon: 'none' });
+          });
+        },
+        fail: (err) => {
+          console.error('选择图片失败:', err);
+          if (err.errMsg !== "chooseMedia:fail cancel") {
+             wx.showToast({ title: '选择图片失败', icon: 'none' });
+          }
         }
-      }
-    });
-  },
-
+      });
+    },
+  
   onPaletteChange(e: WechatMiniprogram.PickerChange) {
     this.setData({ paletteIndex: parseInt(e.detail.value as string, 10) });
   },
@@ -345,8 +350,8 @@ Page({
   closeCalibrationModal() {
     this.setData({
       showCalibrationModal: false
-    });
-  },
+      });
+    },
 
   // 应用校准结果
   applyCalibration() {
@@ -451,7 +456,7 @@ Page({
     const { clientX, clientY } = e.touches[0];
 
     // 获取校准图片容器的位置和尺寸
-    const query = wx.createSelectorQuery().in(this);
+      const query = wx.createSelectorQuery().in(this);
     query.select('.calibration-image-container').boundingClientRect(rect => {
       if (!rect) return;
 
@@ -499,6 +504,182 @@ Page({
       Math.pow(rgb1.g - rgb2.g, 2) +
       Math.pow(rgb1.b - rgb2.b, 2)
     );
+  },
+
+  // 添加手动选择背景的方法
+  toggleBackgroundSelectionMode() {
+    this.setData({
+      manualBackgroundMode: !this.data.manualBackgroundMode
+    });
+
+    if (this.data.manualBackgroundMode) {
+      wx.showToast({
+        title: '点击选择背景区域',
+        icon: 'none',
+        duration: 2000
+      });
+    } else {
+      wx.showToast({
+        title: '已退出背景选择模式',
+        icon: 'none'
+      });
+    }
+  },
+
+  // 处理点击事件
+  handleCanvasTouch(e: WechatMiniprogram.TouchEvent) {
+    if (!this.data.manualBackgroundMode) return;
+
+    // 获取触摸点相对于页面的坐标
+    const { clientX, clientY } = e.touches[0];
+
+    if (!this.ctx || !this.canvas) {
+      wx.showToast({
+        title: '画布未准备好',
+        icon: 'none'
+      });
+      return;
+    }
+
+    try {
+      // 获取 canvas 元素的位置信息
+      const query = wx.createSelectorQuery();
+      query.select('#previewCanvas')
+        .boundingClientRect()
+        .exec((res) => {
+          if (!res || !res[0]) {
+            wx.showToast({
+              title: '无法获取画布位置',
+              icon: 'none'
+            });
+            return;
+          }
+
+          // 计算触摸点相对于画布的坐标
+          const canvasRect = res[0];
+          const x = clientX - canvasRect.left;
+          const y = clientY - canvasRect.top;
+
+          console.log('Canvas位置:', canvasRect);
+          console.log('点击位置 - 原始:', clientX, clientY);
+          console.log('点击位置 - 相对画布:', x, y);
+
+          // 检查坐标是否在画布范围内
+          if (x < 0 || y < 0 || x >= this.data.canvasWidth || y >= this.data.canvasHeight) {
+            wx.showToast({
+              title: '点击位置超出画布范围',
+              icon: 'none'
+            });
+            return;
+          }
+
+          // 获取点击位置对应的网格单元格
+          const gridCol = Math.floor((x - this.data.gridOffsetX) / this.data.gridCellWidth);
+          const gridRow = Math.floor((y - this.data.gridOffsetY) / this.data.gridCellHeight);
+
+          console.log('选中网格:', gridRow, gridCol);
+          
+          try {
+            // 获取单元格的平均颜色，排除网格线
+            const GRID_LINE_WIDTH = 1; // 假设网格线宽度为1px，如果不同请修改
+            const cellX = this.data.gridOffsetX + gridCol * this.data.gridCellWidth;
+            const cellY = this.data.gridOffsetY + gridRow * this.data.gridCellHeight;
+
+            // 计算实际采样区域（排除网格线）
+            // 我们从单元格的(1,1)像素开始，到(width-1, height-1)结束，以避开边缘的网格线
+            const sampleX = Math.ceil(cellX + GRID_LINE_WIDTH);
+            const sampleY = Math.ceil(cellY + GRID_LINE_WIDTH);
+            // 确保宽度和高度至少为1，并且减去两倍的网格线宽度
+            const sampleWidth = Math.max(1, Math.floor(this.data.gridCellWidth - (GRID_LINE_WIDTH * 2)));
+            const sampleHeight = Math.max(1, Math.floor(this.data.gridCellHeight - (GRID_LINE_WIDTH * 2)));
+            
+            console.log('单元格原始坐标:', cellX, cellY);
+            console.log('单元格原始尺寸:', this.data.gridCellWidth, this.data.gridCellHeight);
+            console.log('采样区域:', {
+              x: sampleX,
+              y: sampleY,
+              width: sampleWidth,
+              height: sampleHeight
+            });
+
+            // 确保采样区域有效
+            if (sampleWidth <= 0 || sampleHeight <= 0) {
+              wx.showToast({
+                title: '网格太小无法取色',
+                icon: 'none'
+              });
+              console.warn('采样区域无效:', sampleWidth, sampleHeight, '单元格尺寸:', this.data.gridCellWidth, this.data.gridCellHeight);
+              return;
+            }
+
+            // 获取中心区域的像素数据（排除边缘的网格线）
+            const imageData = this.ctx.getImageData(
+              sampleX,
+              sampleY,
+              sampleWidth,
+              sampleHeight
+            );
+            const data = imageData.data;
+
+            // 计算平均RGB
+            let rSum = 0, gSum = 0, bSum = 0, pixelCount = 0;
+
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              const a = data[i + 3];
+
+              // 忽略完全透明的像素
+              if (a > 0) {
+                rSum += r;
+                gSum += g;
+                bSum += b;
+                pixelCount++;
+              }
+            }
+
+            if (pixelCount === 0) {
+              wx.showToast({
+                title: '选中区域无有效像素',
+                icon: 'none'
+              });
+              return;
+            }
+
+            const avgR = Math.round(rSum / pixelCount);
+            const avgG = Math.round(gSum / pixelCount);
+            const avgB = Math.round(bSum / pixelCount);
+
+            console.log('平均颜色RGB:', avgR, avgG, avgB);
+
+            // 找到最接近的色板颜色
+            const closestColorCode = this.findClosestColor([avgR, avgG, avgB]);
+
+            this.setData({
+              selectedBackgroundColor: closestColorCode,
+              manualBackgroundMode: false // 自动退出选择模式
+            });
+
+            wx.showToast({
+              title: `已选择背景色: ${closestColorCode}`,
+              icon: 'none'
+            });
+          } catch (error) {
+            console.error('获取像素颜色错误细节:', error);
+            wx.showToast({
+              title: '获取单元格颜色失败',
+              icon: 'none'
+            });
+          }
+        });
+    } catch (error) {
+      console.error('获取画布位置失败:', error);
+      wx.showToast({
+        title: '获取颜色失败',
+        icon: 'none'
+      });
+    }
   },
 
   async exportImg() {
@@ -734,87 +915,148 @@ Page({
 
     // --- 第四步：背景色识别和标记 ---
     // 1. 识别边缘颜色
-    // 检查图像的四条边缘，收集潜在的背景色
-    const potentialBackgroundColors: { [colorCode: string]: number } = {};
-    // 上边缘
-    for (let c = 0; c <= maxGridCol; c++) {
-      if (cellGrid[0] && cellGrid[0][c]) {
-        const code = cellGrid[0][c]!.finalColorCode;
-        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+    let backgroundColorCode = '';
+
+    // 如果有手动选择的背景色，优先使用
+    if (this.data.selectedBackgroundColor) {
+      backgroundColorCode = this.data.selectedBackgroundColor;
+      console.log("使用手动选择的背景色:", backgroundColorCode);
+    } else {
+      // 添加白色/近似白色背景检测
+      // 检查边缘区域是否主要是白色/近似白色
+      const edgeCells = [];
+      
+      // 收集所有边缘单元格
+      // 上边缘
+      for (let c = 0; c <= maxGridCol; c++) {
+        if (cellGrid[0] && cellGrid[0][c]) edgeCells.push(cellGrid[0][c]);
       }
-    }
-    // 下边缘
-    for (let c = 0; c <= maxGridCol; c++) {
-      if (cellGrid[maxGridRow] && cellGrid[maxGridRow][c]) {
-        const code = cellGrid[maxGridRow][c]!.finalColorCode;
-        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+      // 下边缘
+      for (let c = 0; c <= maxGridCol; c++) {
+        if (cellGrid[maxGridRow] && cellGrid[maxGridRow][c]) edgeCells.push(cellGrid[maxGridRow][c]);
       }
-    }
-    // 左边缘
-    for (let r = 0; r <= maxGridRow; r++) {
-      if (cellGrid[r] && cellGrid[r][0]) {
-        const code = cellGrid[r][0]!.finalColorCode;
-        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+      // 左边缘
+      for (let r = 1; r < maxGridRow; r++) {
+        if (cellGrid[r] && cellGrid[r][0]) edgeCells.push(cellGrid[r][0]);
       }
-    }
-    // 右边缘
-    for (let r = 0; r <= maxGridRow; r++) {
-      if (cellGrid[r] && cellGrid[r][maxGridCol]) {
-        const code = cellGrid[r][maxGridCol]!.finalColorCode;
-        potentialBackgroundColors[code] = (potentialBackgroundColors[code] || 0) + 1;
+      // 右边缘
+      for (let r = 1; r < maxGridRow; r++) {
+        if (cellGrid[r] && cellGrid[r][maxGridCol]) edgeCells.push(cellGrid[r][maxGridCol]);
       }
-    }
-
-    // 找出出现最多的边缘颜色
-    let mostFrequentBgColor = '';
-    let maxCount = 0;
-    for (const code in potentialBackgroundColors) {
-      if (potentialBackgroundColors[code] > maxCount) {
-        maxCount = potentialBackgroundColors[code];
-        mostFrequentBgColor = code;
-      }
-    }
-
-    console.log("检测到的背景色:", mostFrequentBgColor);
-
-    // 2. 从边缘开始进行洪水填充，将连续的背景色区域标记为背景
-    const isVisitedForBg: boolean[][] = Array(maxGridRow + 1).fill(null).map(() => Array(maxGridCol + 1).fill(false));
-
-    // 洪水填充函数
-    const floodFillBackground = (startR: number, startC: number) => {
-      if (!cellGrid[startR] || !cellGrid[startR][startC] || isVisitedForBg[startR][startC]) return;
-      if (cellGrid[startR][startC]!.finalColorCode !== mostFrequentBgColor) return;
-
-      const queue: Array<[number, number]> = [[startR, startC]];
-      isVisitedForBg[startR][startC] = true;
-      cellGrid[startR][startC]!.isBackground = true;
-
-      while (queue.length > 0) {
-        const [r, c] = queue.shift()!;
-        const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // 右、下、左、上
-
-        for (const [dr, dc] of directions) {
-          const nr = r + dr;
-          const nc = c + dc;
-          if (nr >= 0 && nr <= maxGridRow && nc >= 0 && nc <= maxGridCol &&
-            !isVisitedForBg[nr][nc] && cellGrid[nr][nc] &&
-            cellGrid[nr][nc]!.finalColorCode === mostFrequentBgColor) {
-            isVisitedForBg[nr][nc] = true;
-            cellGrid[nr][nc]!.isBackground = true;
-            queue.push([nr, nc]);
+      
+      // 检查多少比例的边缘是白色或近似白色
+      const whiteColorCount = edgeCells.filter(cell => {
+        const rgb = paletteRgbMap[cell.finalColorCode];
+        if (!rgb) return false;
+        
+        // 检查是否为白色或近似白色 (高亮度颜色)
+        const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+        return brightness > 220; // 亮度阈值, 220以上认为是近似白色
+      }).length;
+      
+      const whiteRatio = whiteColorCount / edgeCells.length;
+      console.log(`边缘白色比例: ${whiteRatio.toFixed(2)}, 白色数: ${whiteColorCount}, 总边缘: ${edgeCells.length}`);
+      
+      // 如果超过70%的边缘是白色或近似白色，那么直接将这些颜色识别为背景
+      if (whiteRatio > 0.7) {
+        console.log("检测到白色/近似白色背景");
+        
+        // 构建白色/近似白色颜色列表
+        const whiteLikeColors = new Set<string>();
+        for (const cell of edgeCells) {
+          const rgb = paletteRgbMap[cell.finalColorCode];
+          if (!rgb) continue;
+          
+          const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+          if (brightness > 220) {
+            whiteLikeColors.add(cell.finalColorCode);
           }
         }
+        
+        console.log("识别为背景的颜色:", Array.from(whiteLikeColors));
+        
+        // 自动将所有白色/近似白色单元格标记为背景
+        for (const cell of cellDataForProcessing) {
+          if (whiteLikeColors.has(cell.finalColorCode)) {
+            cell.isBackground = true;
+          }
+        }
+        
+        // 使用其中一个白色作为背景色码
+        backgroundColorCode = Array.from(whiteLikeColors)[0];
+      } else {
+        // 使用原来的最频繁边缘颜色方法
+        const colorFrequency: Record<string, number> = {};
+        edgeCells.forEach(cell => {
+          const colorKey = cell.finalColorCode;
+          colorFrequency[colorKey] = (colorFrequency[colorKey] || 0) + 1;
+        });
+        
+        let maxFrequency = 0;
+        for (const [colorCode, frequency] of Object.entries(colorFrequency)) {
+          if (frequency > maxFrequency) {
+            maxFrequency = frequency;
+            backgroundColorCode = colorCode;
+          }
+        }
+        
+        console.log("检测到的背景色:", backgroundColorCode);
+      
+        // 2. 从边缘开始进行洪水填充，将连续的背景色区域标记为背景
+        const isVisitedForBg: boolean[][] = Array(maxGridRow + 1).fill(null).map(() => Array(maxGridCol + 1).fill(false));
+        
+        // 改进的颜色相似度判断函数 - 使用容差
+        const isColorSimilarToBackground = (colorCode: string) => {
+          // 如果完全相同，直接返回 true
+          if (colorCode === backgroundColorCode) return true;
+        
+          // 否则检查颜色距离是否在容差范围内
+          const bgRgb = paletteRgbMap[backgroundColorCode];
+          const cellRgb = paletteRgbMap[colorCode];
+        
+          if (!bgRgb || !cellRgb) return false;
+        
+          const colorDist = this.colorDistance(bgRgb, cellRgb);
+          return colorDist <= this.data.backgroundTolerance;
+        };
+        
+        // 修改后的洪水填充函数 - 使用颜色相似度而非严格相等
+        const floodFillBackground = (startR: number, startC: number) => {
+          if (!cellGrid[startR] || !cellGrid[startR][startC] || isVisitedForBg[startR][startC]) return;
+          if (!isColorSimilarToBackground(cellGrid[startR][startC]!.finalColorCode)) return;
+        
+          const queue: Array<[number, number]> = [[startR, startC]];
+          isVisitedForBg[startR][startC] = true;
+          cellGrid[startR][startC]!.isBackground = true;
+        
+          while (queue.length > 0) {
+            const [r, c] = queue.shift()!;
+            const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // 右、下、左、上
+        
+            for (const [dr, dc] of directions) {
+              const nr = r + dr;
+              const nc = c + dc;
+              if (nr >= 0 && nr <= maxGridRow && nc >= 0 && nc <= maxGridCol &&
+                !isVisitedForBg[nr][nc] && cellGrid[nr][nc] &&
+                isColorSimilarToBackground(cellGrid[nr][nc]!.finalColorCode)) {
+                isVisitedForBg[nr][nc] = true;
+                cellGrid[nr][nc]!.isBackground = true;
+                queue.push([nr, nc]);
+              }
+            }
+          }
+        };
+        
+        // 从四条边缘开始填充
+        for (let c = 0; c <= maxGridCol; c++) {
+          floodFillBackground(0, c); // 上边缘
+          floodFillBackground(maxGridRow, c); // 下边缘
+        }
+        for (let r = 0; r <= maxGridRow; r++) {
+          floodFillBackground(r, 0); // 左边缘
+          floodFillBackground(r, maxGridCol); // 右边缘
+        }
       }
-    };
-
-    // 从四条边缘开始填充
-    for (let c = 0; c <= maxGridCol; c++) {
-      floodFillBackground(0, c); // 上边缘
-      floodFillBackground(maxGridRow, c); // 下边缘
-    }
-    for (let r = 0; r <= maxGridRow; r++) {
-      floodFillBackground(r, 0); // 左边缘
-      floodFillBackground(r, maxGridCol); // 右边缘
     }
 
     // --- 第五步：创建导出画布并绘制 ---
@@ -905,8 +1147,8 @@ Page({
           success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
           fail: (err) => wx.showToast({ title: '保存失败: ' + err.errMsg, icon: 'none' })
         });
-      },
-      fail: (err) => {
+            },
+            fail: (err) => {
         wx.hideLoading();
         wx.showToast({ title: '导出失败: ' + err.errMsg, icon: 'none' });
       }
@@ -938,5 +1180,51 @@ Page({
         }, 100);
       });
     }).exec();
+  },
+
+  // 背景容差调整
+  onBackgroundToleranceChange(e: WechatMiniprogram.SliderChange) {
+    this.setData({
+      backgroundTolerance: e.detail.value
+    });
+  },
+
+  // 添加到Page对象中，与其他方法并列
+  findClosestColor(rgb: [number, number, number]): string {
+    const { paletteIndex, paletteOptions } = this.data;
+    const selectedPaletteOption = paletteOptions[paletteIndex];
+    const selectedPaletteKey = selectedPaletteOption.key;
+
+    let activePaletteKeys: string[] = [];
+
+    if (selectedPaletteKey === 'allPaletteKeys') {
+      activePaletteKeys = Object.keys(beadPaletteData);
+    } else if ((PaletteKeys as any)[selectedPaletteKey]) {
+      activePaletteKeys = (PaletteKeys as any)[selectedPaletteKey];
+    } else {
+      activePaletteKeys = Object.keys(beadPaletteData);
+    }
+
+    let closestCode = '';
+    let minDistance = Infinity;
+
+    // 转换传入的RGB数组为RGB对象格式
+    const targetRgb = { r: rgb[0], g: rgb[1], b: rgb[2] };
+
+    for (const key of activePaletteKeys) {
+      const hexColor = (beadPaletteData as any)[key];
+      if (!hexColor) continue;
+
+      const paletteRgb = this.hexToRgb(hexColor);
+      if (!paletteRgb) continue;
+
+      const distance = this.colorDistance(targetRgb, paletteRgb);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestCode = key;
+      }
+    }
+
+    return closestCode;
   },
 })

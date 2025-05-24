@@ -501,7 +501,6 @@
   justify-content: center;
   font-size: 30rpx;
   margin-bottom: 10rpx;
-
 }
 
 .justify-btn {
@@ -536,4 +535,21 @@
 .grid-slider {
   margin: 20px;
   width: 80%;
+}
+
+.button-container {
+  display: flex;
+  justify-content: space-around;
+  margin: 10px 0;
+}
+
+.control-button {
+  flex: 1;
+  margin: 0 5px;
+  font-size: 14px;
+}
+
+.active {
+  background-color: #007acc;
+  color: white;
 }

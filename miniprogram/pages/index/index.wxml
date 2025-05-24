@@ -29,14 +29,14 @@
     </view>
   </view>
   <view class="result-container">
-    <!-- wx:if 控制显示，style 控制尺寸 -->
-    <canvas wx:if="{{imagePath}}" id="previewCanvas" type="2d" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
+    <!-- wx:if 控制显示，style 控制尺寸，添加点击事件处理 -->
+    <canvas wx:if="{{imagePath}}" id="previewCanvas" type="2d" bindtouchstart="{{manualBackgroundMode ? 'handleCanvasTouch' : ''}}" style="width: {{canvasWidth}}px; height: {{canvasHeight}}px;"></canvas>
     <!-- 可以加一个图片未选择时的提示 -->
     <view wx:else class="placeholder-text">请先选择图片</view>
   </view>
 
   <!-- 网格控制面板 -->
-  <view class="grid-controls">
+  <view wx:if="{{imagePath}}" class="grid-controls">
     <view class="control-section">
       <h3>单元格边界微调</h3>
       <view class="slider-row">
@@ -69,7 +69,12 @@
 
 
     </view>
-    <button class="setting-button" size="mini" type="primary" bindtap="exportImg">导出</button>
+    <view class="button-container">
+      <button class="control-button" bindtap="exportImg">导出</button>
+      <button class="control-button {{manualBackgroundMode ? 'active' : ''}}" bindtap="toggleBackgroundSelectionMode">
+        {{manualBackgroundMode ? '取消选择背景' : '选择背景'}}
+      </button>
+    </view>
   </view>
 
   <!-- 在页面底部添加校准弹窗 -->
@@ -105,6 +110,12 @@
         <button class="calibration-button apply" bindtap="applyCalibration">应用</button>
       </view>
     </view>
+  </view>
+
+  <!-- 可选：添加背景容差滑块控制 -->
+  <view class="setting-item" wx:if="{{selectedBackgroundColor}}">
+    <text class="setting-label">背景容差:</text>
+    <slider min="5" max="100" value="{{backgroundTolerance}}" show-value bindchange="onBackgroundToleranceChange" />
   </view>
 
 </view>
