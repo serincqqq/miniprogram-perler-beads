@@ -71,8 +71,8 @@
     </view>
     <view class="button-container">
       <button class="control-button" bindtap="exportImg">导出</button>
-      <button class="control-button {{manualBackgroundMode ? 'active' : ''}}" bindtap="toggleBackgroundSelectionMode">
-        {{manualBackgroundMode ? '取消选择背景' : '选择背景'}}
+      <button class="control-button" bindtap="previewImg">
+        预览和调整
       </button>
     </view>
   </view>

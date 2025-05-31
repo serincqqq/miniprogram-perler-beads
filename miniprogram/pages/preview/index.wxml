@@ -1,0 +1,5 @@
+<!--pages/preview/index.wxml-->
+<navigation-bar title="拼豆图转换器" back="{{false}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-container">
+  test
+</view>

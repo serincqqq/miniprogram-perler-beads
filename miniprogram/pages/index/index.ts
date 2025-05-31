@@ -99,18 +99,18 @@ Page({
     }
 
   },
-    // 事件处理函数
-    onChooseImage() {
+  // 事件处理函数
+  onChooseImage() {
     // 选择图片前，确保Canvas已经初始化
     if (!this.canvas || !this.ctx) {
       this.preInitializeCanvas();
     }
 
-      wx.chooseMedia({
-        count: 1,
-        mediaType: ['image'],
-        sourceType: ['album', 'camera'],
-        success: (res) => {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
         const tempFilePath = res.tempFiles[0].tempFilePath;
 
         // 首先设置临时文件路径，以便显示在弹窗中
@@ -118,17 +118,17 @@ Page({
           tempFilePath: tempFilePath,
           calibrationImg: tempFilePath,
           showCalibrationModal: true
-          });
-        },
-        fail: (err) => {
-          console.error('选择图片失败:', err);
-          if (err.errMsg !== "chooseMedia:fail cancel") {
-             wx.showToast({ title: '选择图片失败', icon: 'none' });
-          }
+        });
+      },
+      fail: (err) => {
+        console.error('选择图片失败:', err);
+        if (err.errMsg !== "chooseMedia:fail cancel") {
+          wx.showToast({ title: '选择图片失败', icon: 'none' });
         }
-      });
-    },
-  
+      }
+    });
+  },
+
   onPaletteChange(e: WechatMiniprogram.PickerChange) {
     this.setData({ paletteIndex: parseInt(e.detail.value as string, 10) });
   },
@@ -350,8 +350,8 @@ Page({
   closeCalibrationModal() {
     this.setData({
       showCalibrationModal: false
-      });
-    },
+    });
+  },
 
   // 应用校准结果
   applyCalibration() {
@@ -456,7 +456,7 @@ Page({
     const { clientX, clientY } = e.touches[0];
 
     // 获取校准图片容器的位置和尺寸
-      const query = wx.createSelectorQuery().in(this);
+    const query = wx.createSelectorQuery().in(this);
     query.select('.calibration-image-container').boundingClientRect(rect => {
       if (!rect) return;
 
@@ -507,23 +507,10 @@ Page({
   },
 
   // 添加手动选择背景的方法
-  toggleBackgroundSelectionMode() {
-    this.setData({
-      manualBackgroundMode: !this.data.manualBackgroundMode
-    });
-
-    if (this.data.manualBackgroundMode) {
-      wx.showToast({
-        title: '点击选择背景区域',
-        icon: 'none',
-        duration: 2000
-      });
-    } else {
-      wx.showToast({
-        title: '已退出背景选择模式',
-        icon: 'none'
-      });
-    }
+  previewImg() {
+    wx.navigateTo({
+      url: '/pages/preview/index'
+    })
   },
 
   // 处理点击事件
@@ -578,7 +565,7 @@ Page({
           const gridRow = Math.floor((y - this.data.gridOffsetY) / this.data.gridCellHeight);
 
           console.log('选中网格:', gridRow, gridCol);
-          
+
           try {
             // 获取单元格的平均颜色，排除网格线
             const GRID_LINE_WIDTH = 1; // 假设网格线宽度为1px，如果不同请修改
@@ -592,7 +579,7 @@ Page({
             // 确保宽度和高度至少为1，并且减去两倍的网格线宽度
             const sampleWidth = Math.max(1, Math.floor(this.data.gridCellWidth - (GRID_LINE_WIDTH * 2)));
             const sampleHeight = Math.max(1, Math.floor(this.data.gridCellHeight - (GRID_LINE_WIDTH * 2)));
-            
+
             console.log('单元格原始坐标:', cellX, cellY);
             console.log('单元格原始尺寸:', this.data.gridCellWidth, this.data.gridCellHeight);
             console.log('采样区域:', {
@@ -1039,15 +1026,15 @@ Page({
       const floodFillBackground = (startR: number, startC: number) => {
         if (!cellGrid[startR] || !cellGrid[startR][startC] || isVisitedForBg[startR][startC]) return;
         if (!isColorSimilarToBackground(cellGrid[startR][startC]!.finalColorCode)) return;
-      
+
         const queue: Array<[number, number]> = [[startR, startC]];
         isVisitedForBg[startR][startC] = true;
         cellGrid[startR][startC]!.isBackground = true;
-      
+
         while (queue.length > 0) {
           const [r, c] = queue.shift()!;
           const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // 右、下、左、上
-      
+
           for (const [dr, dc] of directions) {
             const nr = r + dr;
             const nc = c + dc;
@@ -1061,7 +1048,7 @@ Page({
           }
         }
       };
-      
+
       // 从四条边缘开始填充
       for (let c = 0; c <= maxGridCol; c++) {
         floodFillBackground(0, c); // 上边缘
@@ -1161,8 +1148,8 @@ Page({
           success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
           fail: (err) => wx.showToast({ title: '保存失败: ' + err.errMsg, icon: 'none' })
         });
-            },
-            fail: (err) => {
+      },
+      fail: (err) => {
         wx.hideLoading();
         wx.showToast({ title: '导出失败: ' + err.errMsg, icon: 'none' });
       }
