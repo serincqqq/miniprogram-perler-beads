@@ -922,140 +922,154 @@ Page({
       backgroundColorCode = this.data.selectedBackgroundColor;
       console.log("使用手动选择的背景色:", backgroundColorCode);
     } else {
-      // 添加白色/近似白色背景检测
-      // 检查边缘区域是否主要是白色/近似白色
-      const edgeCells = [];
-      
-      // 收集所有边缘单元格
-      // 上边缘
-      for (let c = 0; c <= maxGridCol; c++) {
-        if (cellGrid[0] && cellGrid[0][c]) edgeCells.push(cellGrid[0][c]);
+      // Automatic background color detection logic
+      console.log("尝试自动检测背景色...");
+      const edgeCellsForBg: (typeof cellDataForProcessing[0])[] = [];
+      // Collect cells from the top and bottom edges
+      for (let c_edge = 0; c_edge <= maxGridCol; c_edge++) {
+        const cellTop = cellGrid[0]?.[c_edge];
+        if (cellTop) edgeCellsForBg.push(cellTop);
+        const cellBottom = cellGrid[maxGridRow]?.[c_edge];
+        if (cellBottom) edgeCellsForBg.push(cellBottom);
       }
-      // 下边缘
-      for (let c = 0; c <= maxGridCol; c++) {
-        if (cellGrid[maxGridRow] && cellGrid[maxGridRow][c]) edgeCells.push(cellGrid[maxGridRow][c]);
+      // Collect cells from the left and right edges (excluding corners already covered)
+      for (let r_edge = 1; r_edge < maxGridRow; r_edge++) {
+        const cellLeft = cellGrid[r_edge]?.[0];
+        if (cellLeft) edgeCellsForBg.push(cellLeft);
+        const cellRight = cellGrid[r_edge]?.[maxGridCol];
+        if (cellRight) edgeCellsForBg.push(cellRight);
       }
-      // 左边缘
-      for (let r = 1; r < maxGridRow; r++) {
-        if (cellGrid[r] && cellGrid[r][0]) edgeCells.push(cellGrid[r][0]);
-      }
-      // 右边缘
-      for (let r = 1; r < maxGridRow; r++) {
-        if (cellGrid[r] && cellGrid[r][maxGridCol]) edgeCells.push(cellGrid[r][maxGridCol]);
-      }
-      
-      // 检查多少比例的边缘是白色或近似白色
-      const whiteColorCount = edgeCells.filter(cell => {
-        const rgb = paletteRgbMap[cell.finalColorCode];
-        if (!rgb) return false;
-        
-        // 检查是否为白色或近似白色 (高亮度颜色)
-        const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-        return brightness > 220; // 亮度阈值, 220以上认为是近似白色
-      }).length;
-      
-      const whiteRatio = whiteColorCount / edgeCells.length;
-      console.log(`边缘白色比例: ${whiteRatio.toFixed(2)}, 白色数: ${whiteColorCount}, 总边缘: ${edgeCells.length}`);
-      
-      // 如果超过70%的边缘是白色或近似白色，那么直接将这些颜色识别为背景
-      if (whiteRatio > 0.7) {
-        console.log("检测到白色/近似白色背景");
-        
-        // 构建白色/近似白色颜色列表
-        const whiteLikeColors = new Set<string>();
-        for (const cell of edgeCells) {
+
+      if (edgeCellsForBg.length > 0) {
+        // Calculate the proportion of white or near-white colors on the edge
+        const whiteColorCount = edgeCellsForBg.filter(cell => {
           const rgb = paletteRgbMap[cell.finalColorCode];
-          if (!rgb) continue;
-          
-          const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
-          if (brightness > 220) {
-            whiteLikeColors.add(cell.finalColorCode);
+          // Check if RGB exists and brightness is above a threshold (e.g., 220 for near-white)
+          return rgb && (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000 > 220;
+        }).length;
+        const whiteRatio = whiteColorCount / edgeCellsForBg.length;
+        console.log(`边缘白色比例: ${whiteRatio.toFixed(2)}, 白色数: ${whiteColorCount}, 总边缘数: ${edgeCellsForBg.length}`);
+        console.log("当前选择的背景容差 (UI):", this.data.backgroundTolerance);
+
+
+        if (whiteRatio > 0.7) { // If a high proportion of edge cells are white/near-white
+          console.log("检测到可能的白色/近似白色背景");
+          const whiteLikeCodes = new Set<string>(); // Store all unique white-like color codes found
+          edgeCellsForBg.forEach(cell => {
+            const rgb = paletteRgbMap[cell.finalColorCode];
+            if (rgb && (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000 > 220) {
+              whiteLikeCodes.add(cell.finalColorCode);
+            }
+          });
+
+          console.log("识别为背景的白色系颜色代码:", Array.from(whiteLikeCodes));
+          // 如果任何白色系颜色被找到，使用第一个作为代表性背景色
+          if (whiteLikeCodes.size > 0) {
+            backgroundColorCode = Array.from(whiteLikeCodes)[0];
           }
-        }
-        
-        console.log("识别为背景的颜色:", Array.from(whiteLikeColors));
-        
-        // 自动将所有白色/近似白色单元格标记为背景
-        for (const cell of cellDataForProcessing) {
-          if (whiteLikeColors.has(cell.finalColorCode)) {
-            cell.isBackground = true;
-          }
-        }
-        
-        // 使用其中一个白色作为背景色码
-        backgroundColorCode = Array.from(whiteLikeColors)[0];
-      } else {
-        // 使用原来的最频繁边缘颜色方法
-        const colorFrequency: Record<string, number> = {};
-        edgeCells.forEach(cell => {
-          const colorKey = cell.finalColorCode;
-          colorFrequency[colorKey] = (colorFrequency[colorKey] || 0) + 1;
-        });
-        
-        let maxFrequency = 0;
-        for (const [colorCode, frequency] of Object.entries(colorFrequency)) {
-          if (frequency > maxFrequency) {
-            maxFrequency = frequency;
-            backgroundColorCode = colorCode;
-          }
-        }
-        
-        console.log("检测到的背景色:", backgroundColorCode);
-      
-        // 2. 从边缘开始进行洪水填充，将连续的背景色区域标记为背景
-        const isVisitedForBg: boolean[][] = Array(maxGridRow + 1).fill(null).map(() => Array(maxGridCol + 1).fill(false));
-        
-        // 改进的颜色相似度判断函数 - 使用容差
-        const isColorSimilarToBackground = (colorCode: string) => {
-          // 如果完全相同，直接返回 true
-          if (colorCode === backgroundColorCode) return true;
-        
-          // 否则检查颜色距离是否在容差范围内
-          const bgRgb = paletteRgbMap[backgroundColorCode];
-          const cellRgb = paletteRgbMap[colorCode];
-        
-          if (!bgRgb || !cellRgb) return false;
-        
-          const colorDist = this.colorDistance(bgRgb, cellRgb);
-          return colorDist <= this.data.backgroundTolerance;
-        };
-        
-        // 修改后的洪水填充函数 - 使用颜色相似度而非严格相等
-        const floodFillBackground = (startR: number, startC: number) => {
-          if (!cellGrid[startR] || !cellGrid[startR][startC] || isVisitedForBg[startR][startC]) return;
-          if (!isColorSimilarToBackground(cellGrid[startR][startC]!.finalColorCode)) return;
-        
-          const queue: Array<[number, number]> = [[startR, startC]];
-          isVisitedForBg[startR][startC] = true;
-          cellGrid[startR][startC]!.isBackground = true;
-        
-          while (queue.length > 0) {
-            const [r, c] = queue.shift()!;
-            const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // 右、下、左、上
-        
-            for (const [dr, dc] of directions) {
-              const nr = r + dr;
-              const nc = c + dc;
-              if (nr >= 0 && nr <= maxGridRow && nc >= 0 && nc <= maxGridCol &&
-                !isVisitedForBg[nr][nc] && cellGrid[nr][nc] &&
-                isColorSimilarToBackground(cellGrid[nr][nc]!.finalColorCode)) {
-                isVisitedForBg[nr][nc] = true;
-                cellGrid[nr][nc]!.isBackground = true;
-                queue.push([nr, nc]);
-              }
+        } else { // If not predominantly white, find the most frequent color on the edge
+          const freq: Record<string, number> = {};
+          edgeCellsForBg.forEach(cell => {
+            freq[cell.finalColorCode] = (freq[cell.finalColorCode] || 0) + 1;
+          });
+          let maxFreq = 0;
+          let mostFrequentEdgeColor = '';
+          for (const code in freq) { // This is the loop from the error context
+            if (freq[code] > maxFreq) {
+              maxFreq = freq[code];
+              mostFrequentEdgeColor = code;
             }
           }
-        };
-        
-        // 从四条边缘开始填充
-        for (let c = 0; c <= maxGridCol; c++) {
-          floodFillBackground(0, c); // 上边缘
-          floodFillBackground(maxGridRow, c); // 下边缘
+          backgroundColorCode = mostFrequentEdgeColor;
+          console.log("检测到的边缘最频繁背景色 (非白色主导):", backgroundColorCode);
         }
-        for (let r = 0; r <= maxGridRow; r++) {
-          floodFillBackground(r, 0); // 左边缘
-          floodFillBackground(r, maxGridCol); // 右边缘
+      } else {
+        console.log("边缘无单元格用于自动背景色检测。");
+      }
+      // 增加日志，打印最终自动确定的背景色
+      console.log("最终自动确定的 backgroundColorCode:", backgroundColorCode);
+    }
+
+    // Proceed with flood fill if a backgroundColorCode has been determined (either manually or automatically)
+    if (backgroundColorCode && paletteRgbMap[backgroundColorCode]) {
+      const isVisitedForBg: boolean[][] = Array(maxGridRow + 1).fill(null).map(() => Array(maxGridCol + 1).fill(false));
+
+      const getBrightness = (rgb: { r: number, g: number, b: number }) => (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+
+      const isColorSimilarToBackground = (cellCodeToTest: string) => {
+        if (cellCodeToTest === backgroundColorCode) return true; // Exact match
+
+        const bgRgb = paletteRgbMap[backgroundColorCode];
+        const cellRgb = paletteRgbMap[cellCodeToTest];
+        if (!bgRgb || !cellRgb) return false; // Cannot compare if RGB values are missing
+
+        const bgLum = getBrightness(bgRgb);
+        const cellLum = getBrightness(cellRgb);
+
+        // 新增：特定规则，防止浅色背景"侵蚀"深色前景
+        const VERY_DARK_LUMINANCE_THRESHOLD = 50; // 定义"非常暗"的亮度阈值 (H7=0, H16=28 均小于此)
+        const RELATIVELY_LIGHT_BACKGROUND_LUMINANCE_THRESHOLD = 60; // 定义"相对亮"的背景亮度阈值 (G16约115 大于此)
+
+        if (bgLum > RELATIVELY_LIGHT_BACKGROUND_LUMINANCE_THRESHOLD && cellLum < VERY_DARK_LUMINANCE_THRESHOLD) {
+          // console.log(`特定规则: 亮背景 (${backgroundColorCode}, lum ${bgLum.toFixed(0)}) vs 暗单元格 (${cellCodeToTest}, lum ${cellLum.toFixed(0)}). 不相似.`);
+          return false;
         }
+
+        const brightnessDifference = Math.abs(bgLum - cellLum);
+        // 保持之前的亮度差异判断，但其优先级在新规则之后
+        // 原来是 75，尝试减小，比如 40
+        if (brightnessDifference > 40) { //  MODIFIED: Reduced from 75
+          // console.log(`亮度差异过大: ${brightnessDifference.toFixed(0)} for ${cellCodeToTest} vs ${backgroundColorCode}`);
+          return false;
+        }
+
+        const colorDistanceVal = this.colorDistance(bgRgb, cellRgb);
+        // effectiveTolerance 原来是 this.data.backgroundTolerance * 2.0
+        // 可以考虑让这个容差更小一点，例如 * 1.5
+        const effectiveTolerance = this.data.backgroundTolerance * 1.5; // MODIFIED: Reduced multiplier from 2.0
+        if (colorDistanceVal > effectiveTolerance) {
+          // console.log(`颜色距离过大: ${colorDistanceVal.toFixed(2)} > ${effectiveTolerance.toFixed(2)} for ${cellCodeToTest} vs ${backgroundColorCode}`);
+          return false;
+        }
+        // console.log(`通过相似度检查: 背景(${backgroundColorCode}, lum ${bgLum.toFixed(0)}) vs 单元格(${cellCodeToTest}, lum ${cellLum.toFixed(0)}). 亮度差: ${brightnessDifference.toFixed(0)}, 颜色距离: ${colorDistanceVal.toFixed(2)} <= ${effectiveTolerance.toFixed(2)}`);
+        return true;
+      };
+
+      // 修改后的洪水填充函数 - 使用颜色相似度而非严格相等
+      const floodFillBackground = (startR: number, startC: number) => {
+        if (!cellGrid[startR] || !cellGrid[startR][startC] || isVisitedForBg[startR][startC]) return;
+        if (!isColorSimilarToBackground(cellGrid[startR][startC]!.finalColorCode)) return;
+      
+        const queue: Array<[number, number]> = [[startR, startC]];
+        isVisitedForBg[startR][startC] = true;
+        cellGrid[startR][startC]!.isBackground = true;
+      
+        while (queue.length > 0) {
+          const [r, c] = queue.shift()!;
+          const directions = [[0, 1], [1, 0], [0, -1], [-1, 0]]; // 右、下、左、上
+      
+          for (const [dr, dc] of directions) {
+            const nr = r + dr;
+            const nc = c + dc;
+            if (nr >= 0 && nr <= maxGridRow && nc >= 0 && nc <= maxGridCol &&
+              !isVisitedForBg[nr][nc] && cellGrid[nr][nc] &&
+              isColorSimilarToBackground(cellGrid[nr][nc]!.finalColorCode)) {
+              isVisitedForBg[nr][nc] = true;
+              cellGrid[nr][nc]!.isBackground = true;
+              queue.push([nr, nc]);
+            }
+          }
+        }
+      };
+      
+      // 从四条边缘开始填充
+      for (let c = 0; c <= maxGridCol; c++) {
+        floodFillBackground(0, c); // 上边缘
+        floodFillBackground(maxGridRow, c); // 下边缘
+      }
+      for (let r = 0; r <= maxGridRow; r++) {
+        floodFillBackground(r, 0); // 左边缘
+        floodFillBackground(r, maxGridCol); // 右边缘
       }
     }
 
