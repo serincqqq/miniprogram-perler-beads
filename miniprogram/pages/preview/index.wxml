@@ -1,5 +1,14 @@
-<!--pages/preview/index.wxml-->
-<navigation-bar title="拼豆图转换器" back="{{false}}" color="black" background="#FFF"></navigation-bar>
-<view class="page-container">
-  test
+<!-- pages/preview/index.wxml -->
+<navigation-bar title="预览" back="{{true}}" color="black" background="#FFF"></navigation-bar>
+<view class="page-container" style="padding-top: {{statusBarHeight + navBarHeight}}px;">
+  <view class="zoom-controls">
+    <button size="mini" bindtap="zoomOut" disabled="{{zoomLevel <= minZoom}}">-</button>
+    <text>缩放: {{zoomPercent}}%</text>
+    <button size="mini" bindtap="zoomIn" disabled="{{zoomLevel >= maxZoom}}">+</button>
+  </view>
+  <scroll-view scroll-x="true" scroll-y="true" class="preview-scroll-view" style="height: {{scrollViewHeight}}px;">
+    <view class="image-wrapper">
+      <image class="preview-image" src="{{tempFilePath}}" mode="widthFix" style="width: {{displayImageWidth}}px;" show-menu-by-longpress="{{true}}"></image>
+    </view>
+  </scroll-view>
 </view>

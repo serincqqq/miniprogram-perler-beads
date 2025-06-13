@@ -1,0 +1,55 @@
+/* pages/preview/index.wxss */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  /* 使页面占满全高 */
+  box-sizing: border-box;
+}
+
+.zoom-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20rpx 0;
+  flex-shrink: 0;
+  /* 防止被压缩 */
+}
+
+.zoom-controls text {
+  margin: 0 20rpx;
+  min-width: 120rpx;
+  text-align: center;
+}
+
+.zoom-controls button {
+  margin: 0 10rpx;
+}
+
+.preview-scroll-view {
+  flex-grow: 1;
+  /* 占据剩余空间 */
+  border-top: 1px solid #eee;
+  border-bottom: 1px solid #eee;
+  background-color: #f0f0f0;
+  /* 给滚动区域一个背景色，以区分图片 */
+  width: 100%;
+}
+
+.image-wrapper {
+  /* 这个容器帮助在图片小于滚动区域时居中 */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100%;
+  min-width: 100%;
+}
+
+.preview-image {
+  /* width 由 style 动态设置 */
+  /* mode="widthFix" 会自动处理高度 */
+  /* 以下样式尝试让像素图在缩放时保持清晰，但效果因平台而异 */
+  image-rendering: pixelated; 
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}

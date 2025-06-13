@@ -1,19 +1,19 @@
-<!--index.wxml-->
+<!-- index.wxml -->
 <navigation-bar title="拼豆图转换器" back="{{false}}" color="black" background="#FFF"></navigation-bar>
 <view class="page-container">
-
   <!-- 图片上传区域 -->
   <view bind:tap="onChooseImage" class="uploader-container">
     <view class="uploader-content">
       <image class="uploader-icon" src="/static/upload.png"></image>
-      <text class="uploader-text-main">拖放图片到此处，或<text class="uploader-link">点击选择文件</text></text>
+      <text class="uploader-text-main">
+        拖放图片到此处，或
+        <text class="uploader-link">点击选择文件</text>
+      </text>
       <text class="uploader-text-sub">支持 JPG, PNG 格式</text>
     </view>
   </view>
-
   <!-- 参数设置区域 -->
   <view class="card-container">
-
     <!-- 选择色板 -->
     <view class="setting-item">
       <text class="setting-label">选择色板:</text>
@@ -34,7 +34,6 @@
     <!-- 可以加一个图片未选择时的提示 -->
     <view wx:else class="placeholder-text">请先选择图片</view>
   </view>
-
   <!-- 网格控制面板 -->
   <view wx:if="{{imagePath}}" class="grid-controls">
     <view class="control-section">
@@ -45,7 +44,6 @@
           <span>当前格子宽度</span>
           <input class="cell-size-input" type="digit" value="{{gridCellWidth}}" data-param="width" bindblur="onGridCellBlur" />
         </div>
-
         <span class="justify-btn" data-param="add" bind:tap="changeGridWidth">+</span>
       </view>
       <view class="slider-row">
@@ -66,17 +64,12 @@
         <text class="slider-label">移动y轴(上/下）</text>
         <span data-param="top" bind:tap="movwYAxis" class="justify-btn">↑</span>
       </view>
-
-
     </view>
     <view class="button-container">
       <button class="control-button" bindtap="exportImg">导出</button>
-      <button class="control-button" bindtap="previewImg">
-        预览和调整
-      </button>
+      <button class="control-button" bindtap="previewImg">预览和调整</button>
     </view>
   </view>
-
   <!-- 在页面底部添加校准弹窗 -->
   <view class="calibration-modal" wx:if="{{showCalibrationModal}}" catchtouchmove="moveAxis" bindtouchend="stopMoveAxis">
     <view class="calibration-container">
@@ -84,38 +77,28 @@
         <text class="calibration-title">单元格校准</text>
         <text class="calibration-close" bindtap="closeCalibrationModal">×</text>
       </view>
-
       <view class="calibration-instruction">
         <text>请拖动四条红线框选一个单元格，然后点击"应用"</text>
       </view>
-
       <view class="calibration-image-container">
         <image class="calibration-image" src="{{calibrationImg}}" mode="aspectFit"></image>
-
         <!-- 修改为像素定位 -->
         <view class="axis vertical-axis left-axis" style="left: {{leftAxis}}px" bindtouchstart="startMoveAxis" data-axis="left"></view>
-
         <view class="axis vertical-axis right-axis" style="left: {{rightAxis}}px" bindtouchstart="startMoveAxis" data-axis="right"></view>
-
         <view class="axis horizontal-axis top-axis" style="top: {{topAxis}}px" bindtouchstart="startMoveAxis" data-axis="top"></view>
-
         <view class="axis horizontal-axis bottom-axis" style="top: {{bottomAxis}}px" bindtouchstart="startMoveAxis" data-axis="bottom"></view>
-
         <!-- 选中区域高亮 -->
         <view class="selected-area" style="left: {{leftAxis}}px; top: {{topAxis}}px; width: {{rightAxis - leftAxis}}px; height: {{bottomAxis - topAxis}}px"></view>
       </view>
-
       <view class="calibration-buttons">
         <button class="calibration-button cancel" bindtap="closeCalibrationModal">取消</button>
         <button class="calibration-button apply" bindtap="applyCalibration">应用</button>
       </view>
     </view>
   </view>
-
   <!-- 可选：添加背景容差滑块控制 -->
-  <view class="setting-item" wx:if="{{selectedBackgroundColor}}">
+  <view class="setting-item" wx:if="{{imagePath}}">
     <text class="setting-label">背景容差:</text>
     <slider min="5" max="100" value="{{backgroundTolerance}}" show-value bindchange="onBackgroundToleranceChange" />
   </view>
-
 </view>
