@@ -11,8 +11,8 @@ Page({
 
     tempFilePath: '',
     originalImageWidth: 0,
-    displayImageWidth: 0,
-    
+    displayImageScale: 1.2,
+
     zoomLevel: 1.0,
     minZoom: 0.2, // 最小缩放比例
     maxZoom: 3.0, // 最大缩放比例
@@ -42,7 +42,7 @@ Page({
       this.setData({
         tempFilePath: previewImageData.tempFilePath,
         originalImageWidth: previewImageData.width,
-        displayImageWidth: initialDisplayWidth,
+        //displayImageWidth: initialDisplayWidth,
         zoomLevel: initialZoom,
       });
       this.updateZoomPercent();
@@ -102,29 +102,25 @@ Page({
   },
 
   zoomIn() {
-    let newZoom = this.data.zoomLevel * 1.25;
-    if (newZoom > this.data.maxZoom) {
-      newZoom = this.data.maxZoom;
-    }
-    this.updateZoom(newZoom);
+    this.setData({
+      displayImageScale: this.data.displayImageScale + 0.2,
+    });
   },
 
   zoomOut() {
-    let newZoom = this.data.zoomLevel / 1.25;
-    if (newZoom < this.data.minZoom) {
-      newZoom = this.data.minZoom;
-    }
-    this.updateZoom(newZoom);
+    this.setData({
+      displayImageScale: this.data.displayImageScale - 0.2,
+    });
   },
 
   updateZoom(newZoom: number) {
     this.setData({
       zoomLevel: newZoom,
-      displayImageWidth: this.data.originalImageWidth * newZoom,
+      displayImageScale: this.data.originalImageWidth * newZoom,
     });
     this.updateZoomPercent();
   },
-  
+
   updateZoomPercent() {
     this.setData({
       zoomPercent: (this.data.zoomLevel * 100).toFixed(0),

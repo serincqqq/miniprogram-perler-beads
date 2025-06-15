@@ -3,12 +3,12 @@
 <view class="page-container" style="padding-top: {{statusBarHeight + navBarHeight}}px;">
   <view class="zoom-controls">
     <button size="mini" bindtap="zoomOut" disabled="{{zoomLevel <= minZoom}}">-</button>
-    <text>缩放: {{zoomPercent}}%</text>
+    <text>缩放: {{displayImageScale}}倍</text>
     <button size="mini" bindtap="zoomIn" disabled="{{zoomLevel >= maxZoom}}">+</button>
   </view>
   <scroll-view scroll-x="true" scroll-y="true" class="preview-scroll-view" style="height: {{scrollViewHeight}}px;">
     <view class="image-wrapper">
-      <image class="preview-image" src="{{tempFilePath}}" mode="widthFix" style="width: {{displayImageWidth}}px;" show-menu-by-longpress="{{true}}"></image>
+      <image class="preview-image" src="{{tempFilePath}}" mode="widthFix" style="transform: scale({{displayImageScale}})" show-menu-by-longpress="{{true}}"></image>
     </view>
   </scroll-view>
 </view>
