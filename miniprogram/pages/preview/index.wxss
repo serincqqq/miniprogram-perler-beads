@@ -28,6 +28,7 @@
 
 .preview-scroll-view {
   /* 占据剩余空间 */
+  display: flex;
   border-top: 1px solid #eee;
   border-bottom: 1px solid #eee;
   background-color: #f0f0f0;
@@ -43,5 +44,7 @@
 }
 
 .preview-image {
-  /* transform: scale(2); */
+  transition: transform 0.3s ease;
+  transform-origin: center;
+
 }
