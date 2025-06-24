@@ -11,4 +11,28 @@
       <image class="preview-image" src="{{tempFilePath}}" mode="widthFix" style="transform: scale({{displayImageScale}})" show-menu-by-longpress="{{true}}"></image>
     </view>
   </scroll-view>
+  <!-- Color Palette Section -->
+  <view class="color-palette-section">
+    <view class="color-palette">
+      <view class="color-block" wx:for="{{usedColors}}" wx:key="code" style="background-color: {{item.hex}}" data-color="{{item}}" bindtap="onColorBlockTap">
+        <text class="color-code">{{item.code}}</text>
+      </view>
+    </view>
+  </view>
+  <!-- Export Button -->
+  <view class="action-buttons">
+    <button class="export-btn" type="primary" bindtap="onExport">导出图片</button>
+  </view>
+</view>
+<!-- Color Replacement Dialog -->
+<view class="replacement-dialog" wx:if="{{showReplaceDialog}}">
+  <view class="dialog-content">
+    <view class="dialog-title">选择替换颜色</view>
+    <view class="replacement-colors">
+      <view class="color-block" wx:for="{{availableColors}}" wx:key="code" style="background-color: {{item.hex}}" data-color="{{item}}" bindtap="onReplaceColor">
+        <text class="color-code">{{item.code}}</text>
+      </view>
+    </view>
+    <button class="cancel-btn" bindtap="onCancelReplace">取消</button>
+  </view>
 </view>
