@@ -28,17 +28,13 @@
 <view class="replacement-dialog" wx:if="{{showReplaceDialog}}">
   <view class="dialog-content">
     <view class="dialog-title">输入要替换的颜色</view>
-    <view class="replacement-colors">
-      {{selectedColor.code}}
-      ->
-      <input class="cell-size-input" value="{{newColor}}" />
-      <!-- <view class="color-block" wx:for="{{availableColors}}" wx:key="code" style="background-color: {{item.hex}}" data-color="{{item}}" bindtap="onReplaceColor">
-        <text class="color-code">{{item.code}}</text>
-      </view> -->
+    <view class="replacement-input-container">
+      <text class="color-label">{{selectedColor.code}} -></text>
+      <input class="replacement-input" placeholder="新色号" bindinput="onNewColorInput" value="{{newColorCode}}" maxlength="5" />
     </view>
-    <view class="dialog-btn">
-      <button type="primary" bindtap="onCancelReplace">确定</button>
-      <button bindtap="onCancelReplace">取消</button>
+    <view class="dialog-buttons">
+      <button class="dialog-button" type="primary" bindtap="onConfirmReplace">确定</button>
+      <button class="dialog-button" bindtap="onCancelReplace">取消</button>
     </view>
   </view>
 </view>

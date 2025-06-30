@@ -112,42 +112,55 @@
 }
 
 .dialog-content {
-  width: 90%;
-  max-height: 80vh;
+  width: 85%;
+  max-width: 600rpx;
   background: #fff;
   border-radius: 16rpx;
-  padding: 30rpx;
+  padding: 40rpx;
+  box-sizing: border-box;
 }
 
 .dialog-title {
+  font-size: 36rpx;
+  text-align: center;
+  margin-bottom: 20rpx;
+  font-weight: bold;
+}
+
+.replacement-input-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 60rpx 0;
+}
+
+.color-label {
+  font-size: 36rpx;
+  color: #333;
+}
+
+.replacement-input {
+  border: 1rpx solid #dcdfe6;
+  border-radius: 8rpx;
+  padding: 10rpx 20rpx;
+  width: 200rpx;
   font-size: 32rpx;
   text-align: center;
-  margin-bottom: 30rpx;
+  margin-left: 20rpx;
 }
 
-.replacement-colors {
+.dialog-buttons {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10rpx;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 10rpx;
-  margin-bottom: 30rpx;
+  gap: 30rpx;
+  margin-top: 50rpx;
 }
 
-.cancel-btn {
-  margin-top: 10rpx;
+.dialog-buttons .dialog-button {
+  flex: 1;
+  margin: 0;
 }
 
-.cell-size-input {
-  margin-left: 4rpx;
-  width: 100rpx;
-  padding: 0 6rpx;
-  border: 1px solid #c4c7ce;
-  border-radius: 10rpx;
-}
-
-.dialog-btn {
-  display: flex;
-  gap: 20rpx;
+.dialog-buttons .dialog-button:not([type="primary"]) {
+  background-color: #f2f2f2;
+  color: #333;
 }

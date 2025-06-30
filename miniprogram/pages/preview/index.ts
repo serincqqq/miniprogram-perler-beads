@@ -17,7 +17,7 @@ Page({
    * Page initial data
    */
   data: {
-    newColor:'',
+    newColor: '',
     statusBarHeight: 0,
     navBarHeight: 44,
     scrollViewHeight: 500,
@@ -55,7 +55,6 @@ Page({
     });
 
     const previewImageData = wx.getStorageSync('previewImageData');
-    console.log('gg1', previewImageData.usedColors)
     if (previewImageData && previewImageData.tempFilePath) {
       wx.removeStorageSync('previewImageData');
 
@@ -83,7 +82,6 @@ Page({
         imageData: previewImageData.imageData
       });
       this.updateZoomPercent();
-      console.log('gg', this.data.usedColors)
     } else {
       wx.showToast({ title: '无预览数据', icon: 'none' });
       wx.navigateBack();
@@ -174,22 +172,28 @@ Page({
       selectedColor: color
     });
   },
+  onNewColorInput(e: WechatMiniprogram.CustomEvent) {
+    const value = e.detail.value;
+    this.setData({
+      newColor: value[0].toUpperCase() + value.slice(1)
+    })
+  },
+  onConfirmReplace() {
+    console.log('jj', this.data.newColor)
+    // const newColor = e.currentTarget.dataset.color as ColorInfo;
+    // const { selectedColor, colorReplacements } = this.data;
 
-  onReplaceColor(e: WechatMiniprogram.TouchEvent) {
-    const newColor = e.currentTarget.dataset.color as ColorInfo;
-    const { selectedColor, colorReplacements } = this.data;
-
-    if (selectedColor) {
-      // 更新颜色替换映射
-      this.setData({
-        colorReplacements: {
-          ...colorReplacements,
-          [selectedColor.code]: newColor.code
-        },
-        showReplaceDialog: false,
-        selectedColor: null
-      });
-    }
+    // if (selectedColor) {
+    //   // 更新颜色替换映射
+    //   this.setData({
+    //     colorReplacements: {
+    //       ...colorReplacements,
+    //       [selectedColor.code]: newColor.code
+    //     },
+    //     showReplaceDialog: false,
+    //     selectedColor: null
+    //   });
+    // }
   },
 
   onCancelReplace() {
