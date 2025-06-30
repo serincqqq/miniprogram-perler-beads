@@ -17,6 +17,7 @@ Page({
    * Page initial data
    */
   data: {
+    newColor:'',
     statusBarHeight: 0,
     navBarHeight: 44,
     scrollViewHeight: 500,
@@ -54,25 +55,18 @@ Page({
     });
 
     const previewImageData = wx.getStorageSync('previewImageData');
+    console.log('gg1', previewImageData.usedColors)
     if (previewImageData && previewImageData.tempFilePath) {
       wx.removeStorageSync('previewImageData');
 
       const initialDisplayWidth = sysInfo.windowWidth;
       const initialZoom = initialDisplayWidth / previewImageData.width;
 
-      const usedColorSet = new Set<string>();
-      if (previewImageData.imageData) {
-        previewImageData.imageData.flat().forEach((cell: any) => {
-          if (cell && typeof cell === 'string') {
-            usedColorSet.add(cell);
-          }
-        });
-      }
-
-      const usedColors = [...usedColorSet].map(code => ({
+      const usedColorCodes = previewImageData.usedColors || [];
+      const usedColors = usedColorCodes.map((code: string) => ({
         code,
         hex: beadPalette[code],
-      })).filter(color => color.hex);
+      })).filter((color: { hex: string; }) => color.hex);
 
       // 处理可用的颜色
       const availableColors: ColorInfo[] = Object.entries(beadPalette).map(([code, hex]) => ({
@@ -174,6 +168,7 @@ Page({
   // 颜色替换相关方法
   onColorBlockTap(e: WechatMiniprogram.TouchEvent) {
     const color = e.currentTarget.dataset.color as ColorInfo;
+    console.log('kk', color)
     this.setData({
       showReplaceDialog: true,
       selectedColor: color

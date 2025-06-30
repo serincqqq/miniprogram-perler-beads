@@ -79,6 +79,7 @@ Page({
       this.ctx!.scale(this.dpr, this.dpr);
     });
   },
+  //手动输入单元格宽高
   onGridCellBlur(e: WechatMiniprogram.CustomEvent) {
     const value = e.detail.value;
     const type = e.currentTarget.dataset.param as string;
@@ -89,7 +90,6 @@ Page({
         // formattedGridCellWidth: value.toFixed(2)
       }, () => this.redrawCanvas());
     } else {
-      console.log('ddd')
       this.setData({
         gridCellHeight: parseFloat(value),
         // formattedGridCellHeight: value.toFixed(2)
@@ -211,7 +211,6 @@ Page({
 
   // 重绘Canvas
   redrawCanvas() {
-    console.log('fff')
     if (!this.ctx || !this.canvas) {
       console.warn('redrawCanvas: Canvas未准备好，跳过绘制');
       return;
@@ -537,13 +536,13 @@ Page({
   },
 
   // 新增：生成预览图并返回临时路径
-  async _generatePreviewImage(): Promise<{ tempFilePath: string; width: number; height: number; } | null> {
+  async _generatePreviewImage(): Promise<{ tempFilePath: string; width: number; height: number; usedColors: string[] } | null> {
     const processedData = await this._processImageToGrid();
     if (!processedData) {
       return null;
     }
 
-    const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol } = processedData;
+    const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol, colorSet } = processedData;
     const PREVIEW_CELL_SIZE = 40; // 为预览图设置一个合适的分辨率
     const canvasWidth = (maxGridCol + 1) * PREVIEW_CELL_SIZE;
     const canvasHeight = (maxGridRow + 1) * PREVIEW_CELL_SIZE;
@@ -572,14 +571,14 @@ Page({
 
         const x = c * PREVIEW_CELL_SIZE;
         const y = r * PREVIEW_CELL_SIZE;
-        
+
         const cellColorHex = (beadPaletteData as any)[cell.finalColorCode] || '#CCCCCC';
         previewCtx.fillStyle = cellColorHex;
         previewCtx.fillRect(x, y, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE);
 
         previewCtx.strokeStyle = 'rgba(0,0,0,0.2)';
         previewCtx.strokeRect(x, y, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE);
-        
+
         if (fontSize > 5) {
           const cellRgb = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 };
           const brightness = (cellRgb.r * 299 + cellRgb.g * 587 + cellRgb.b * 114) / 1000;
@@ -588,16 +587,17 @@ Page({
         }
       }
     }
-
+    console.log('ff', colorSet)
     return new Promise((resolve) => {
       wx.canvasToTempFilePath({
         canvas: previewCanvas,
         fileType: 'png',
         success: (res) => {
-          resolve({ 
+          resolve({
             tempFilePath: res.tempFilePath,
             width: canvasWidth,
-            height: canvasHeight
+            height: canvasHeight,
+            usedColors: [...colorSet]
           });
         },
         fail: (err) => {
@@ -615,8 +615,6 @@ Page({
     }
 
     const { canvasWidth, canvasHeight, gridCellWidth, gridCellHeight, gridOffsetX, gridOffsetY, paletteIndex, paletteOptions } = this.data;
-    const MERGE_TOLERANCE_FACTOR = 0.25;
-    const REGION_MERGE_DIST = 20;
 
     // 创建一个离屏 Canvas 用于无污染的图像数据采样
     // @ts-ignore: Workaround for miniprogram typings
@@ -640,7 +638,7 @@ Page({
     cleanSampleCtx.imageSmoothingEnabled = false;
     cleanSampleCtx.drawImage(tempImg, 0, 0, canvasWidth, canvasHeight);
     const cleanImageData = cleanSampleCtx.getImageData(0, 0, canvasWidth, canvasHeight);
-    
+
     // --- Step 1: 颜色查找表 ---
     const selectedPaletteOption = paletteOptions[paletteIndex];
     const selectedPaletteKey = selectedPaletteOption.key;
@@ -671,7 +669,7 @@ Page({
       gridRow: number; gridCol: number;
       isBackground: boolean;
     }> = [];
-
+    const colorSet = new Set<string>();
     const firstVisibleX = (gridOffsetX % gridCellWidth) - gridCellWidth;
     const firstVisibleY = (gridOffsetY % gridCellHeight) - gridCellHeight;
 
@@ -700,12 +698,14 @@ Page({
             }
           }
         }
-        
+
         if (pixelCount === 0) { currentCol++; continue; }
         const avgR = Math.round(rSum / pixelCount);
         const avgG = Math.round(gSum / pixelCount);
         const avgB = Math.round(bSum / pixelCount);
         const closestColorCode = this.findClosestColor([avgR, avgG, avgB]);
+
+        colorSet.add(closestColorCode)
 
         cellDataForProcessing.push({
           avgRgb: { r: avgR, g: avgG, b: avgB },
@@ -718,7 +718,7 @@ Page({
       }
       currentRow++;
     }
-
+    console.log('gg', [...colorSet]);
     if (cellDataForProcessing.length === 0) return null;
 
     const maxGridRow = cellDataForProcessing.reduce((max, cell) => Math.max(max, cell.gridRow), 0);
@@ -740,14 +740,15 @@ Page({
       paletteRgbMap,
       beadPaletteData,
       maxGridRow,
-      maxGridCol
+      maxGridCol,
+      colorSet
     };
   },
 
   async exportImg() {
     wx.showLoading({ title: '生成中...' });
     const processedData = await this._processImageToGrid();
-    
+
     if (!processedData) {
       wx.hideLoading();
       wx.showToast({ title: '图像处理失败', icon: 'none' });
@@ -756,7 +757,7 @@ Page({
 
     const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol } = processedData;
     const EXPORT_CELL_SIZE_PX = 40;
-    
+
     const numExportCols = maxGridCol + 1;
     const numExportRows = maxGridRow + 1;
     const exportCanvasTotalWidth = numExportCols * EXPORT_CELL_SIZE_PX;
@@ -771,7 +772,7 @@ Page({
       wx.showToast({ title: '创建导出画布失败', icon: 'none' });
       return;
     }
-    
+
     exportCtx.clearRect(0, 0, exportCanvasTotalWidth, exportCanvasTotalHeight);
     exportCtx.font = '14px Arial';
     exportCtx.textAlign = 'center';
@@ -784,14 +785,14 @@ Page({
 
         const x = c * EXPORT_CELL_SIZE_PX;
         const y = r * EXPORT_CELL_SIZE_PX;
-        
+
         const cellColorHex = (beadPaletteData as any)[cell.finalColorCode] || '#CCCCCC';
         exportCtx.fillStyle = cellColorHex;
         exportCtx.fillRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
 
         exportCtx.strokeStyle = 'black';
         exportCtx.strokeRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
-        
+
         const cellRgb = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 };
         const brightness = (cellRgb.r * 299 + cellRgb.g * 587 + cellRgb.b * 114) / 1000;
         exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';

@@ -68,8 +68,8 @@
 }
 
 .color-block {
-  width: 80rpx;
-  height: 80rpx;
+  width: 74rpx;
+  height: 74rpx;
   border-radius: 8rpx;
   display: flex;
   align-items: center;
@@ -136,5 +136,18 @@
 }
 
 .cancel-btn {
-  margin-top: 20rpx;
+  margin-top: 10rpx;
+}
+
+.cell-size-input {
+  margin-left: 4rpx;
+  width: 100rpx;
+  padding: 0 6rpx;
+  border: 1px solid #c4c7ce;
+  border-radius: 10rpx;
+}
+
+.dialog-btn {
+  display: flex;
+  gap: 20rpx;
 }
