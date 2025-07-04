@@ -166,34 +166,65 @@ Page({
   // 颜色替换相关方法
   onColorBlockTap(e: WechatMiniprogram.TouchEvent) {
     const color = e.currentTarget.dataset.color as ColorInfo;
-    console.log('kk', color)
     this.setData({
       showReplaceDialog: true,
       selectedColor: color
     });
   },
-  onNewColorInput(e: WechatMiniprogram.CustomEvent) {
-    const value = e.detail.value;
+  onNewColorInput(e: WechatMiniprogram.Input) {
     this.setData({
-      newColor: value[0].toUpperCase() + value.slice(1)
-    })
+      newColorCode: e.detail.value.toUpperCase().trim()
+    });
   },
   onConfirmReplace() {
-    console.log('jj', this.data.newColor)
-    // const newColor = e.currentTarget.dataset.color as ColorInfo;
-    // const { selectedColor, colorReplacements } = this.data;
+    const { selectedColor, newColorCode, colorReplacements, usedColors } = this.data;
 
-    // if (selectedColor) {
-    //   // 更新颜色替换映射
-    //   this.setData({
-    //     colorReplacements: {
-    //       ...colorReplacements,
-    //       [selectedColor.code]: newColor.code
-    //     },
-    //     showReplaceDialog: false,
-    //     selectedColor: null
-    //   });
-    // }
+    // 1. 基础校验
+    if (!selectedColor) return;
+    if (!newColorCode || !beadPalette[newColorCode]) {
+      wx.showToast({
+        title: '请输入有效的色号',
+        icon: 'none'
+      });
+      return;
+    }
+
+    // 2. 更新替换规则表
+    const newReplacements = {
+      ...colorReplacements,
+      [selectedColor.code]: newColorCode
+    };
+
+    // 3. 智能更新UI色板
+    const newUsedColors = [...usedColors];
+    const oldCode = selectedColor.code;
+
+    // 检查替换后的新颜色是否已经存在于色板上
+    // 注意：这里要检查的是“原始”色号，而不是已经被替换过的
+    const newColorAlreadyExists = newUsedColors.some(color => color.code === newColorCode);
+
+    if (newColorAlreadyExists) {
+      // 如果新颜色已存在，则直接从列表中移除旧颜色的色块
+      const indexToRemove = newUsedColors.findIndex(color => color.code === oldCode);
+      if (indexToRemove !== -1) {
+        newUsedColors.splice(indexToRemove, 1);
+      }
+    } else {
+      // 如果新颜色不存在，则找到旧色块并更新它
+      const indexToUpdate = newUsedColors.findIndex(color => color.code === oldCode);
+      if (indexToUpdate !== -1) {
+        newUsedColors[indexToUpdate] = { code: newColorCode, hex: beadPalette[newColorCode] };
+      }
+    }
+    
+    // 4. 一次性更新所有数据并关闭弹窗
+    this.setData({
+      colorReplacements: newReplacements,
+      usedColors: newUsedColors, // 更新色板显示
+      showReplaceDialog: false,
+      selectedColor: null,
+      newColorCode: '' // 重置输入框
+    });
   },
 
   onCancelReplace() {
