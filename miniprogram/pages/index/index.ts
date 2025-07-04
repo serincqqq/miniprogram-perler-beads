@@ -595,7 +595,7 @@ Page({
       }
     });
   },
-  
+
 
   // 新增：生成预览图并返回临时路径
   async _generatePreviewImage(): Promise<{ tempFilePath: string; width: number; height: number; usedColors: string[] } | null> {
@@ -779,7 +779,6 @@ Page({
       }
       currentRow++;
     }
-    console.log('gg', [...colorSet]);
     if (cellDataForProcessing.length === 0) return null;
 
     const maxGridRow = cellDataForProcessing.reduce((max, cell) => Math.max(max, cell.gridRow), 0);
