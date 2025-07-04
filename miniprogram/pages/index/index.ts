@@ -511,13 +511,21 @@ Page({
     }
     wx.showLoading({ title: '生成预览图...' });
 
-    const previewImageData = await this._generatePreviewImage();
+    const processedData = await this._processImageToGrid();
     wx.hideLoading();
 
-    if (previewImageData) {
+    if (processedData) {
       try {
         // 使用 Storage 传递大数据
-        wx.setStorageSync('previewImageData', previewImageData);
+        const { imageData, usedColors } = processedData;
+        const dataForPreview = {
+          imageData: imageData,
+          usedColors: usedColors,
+          tempFilePath: this.data.tempFilePath,
+          width: this.data.canvasWidth,
+          height: this.data.canvasHeight
+        };
+        wx.setStorageSync('previewImageData', dataForPreview);
         wx.navigateTo({
           url: '/pages/preview/index',
           fail: (err) => {
@@ -587,7 +595,6 @@ Page({
         }
       }
     }
-    console.log('ff', colorSet)
     return new Promise((resolve) => {
       wx.canvasToTempFilePath({
         canvas: previewCanvas,
@@ -731,6 +738,15 @@ Page({
       }
     });
 
+    // 在方法末尾，根据 cellGrid 生成二维数组
+    const imageData = Array(maxGridRow + 1).fill(null).map((_, r) => {
+      return Array(maxGridCol + 1).fill(null).map((_, c) => {
+        const cell = cellGrid[r]?.[c];
+        // 保证每个单元格要么是色号字符串，要么是 null
+        return (cell && !cell.isBackground) ? cell.finalColorCode : null;
+      });
+    });
+
     // --- (此处应包含完整的平滑和背景移除逻辑) ---
     // 为确保功能完整，这里省略了这部分代码，但您项目中需要保证它是存在的。
 
@@ -741,7 +757,9 @@ Page({
       beadPaletteData,
       maxGridRow,
       maxGridCol,
-      colorSet
+      colorSet,
+      imageData: imageData,
+      usedColors: [...colorSet]
     };
   },
 
