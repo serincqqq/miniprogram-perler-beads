@@ -595,45 +595,7 @@ Page({
       }
     });
   },
-  // 更新 previewImg, 让它生成图片并传递
-  // async previewImg() {
-  //   if (!this.data.imagePath) {
-  //     wx.showToast({ title: '请先选择并校准图片', icon: 'none' });
-  //     return;
-  //   }
-  //   wx.showLoading({ title: '生成预览图...' });
-
-  //   const processedData = await this._processImageToGrid();
-  //   wx.hideLoading();
-
-  //   if (processedData) {
-  //     try {
-  //       // 使用 Storage 传递大数据
-  //       const { imageData, usedColors } = processedData;
-  //       const dataForPreview = {
-  //         imageData: imageData,
-  //         usedColors: usedColors,
-  //         tempFilePath: this.data.tempFilePath,
-  //         width: this.data.canvasWidth,
-  //         height: this.data.canvasHeight
-  //       };
-  //       wx.setStorageSync('previewImageData', dataForPreview);
-  //       wx.navigateTo({
-  //         url: '/pages/preview/index',
-  //         fail: (err) => {
-  //           console.error("跳转预览页失败:", err);
-  //           wx.showToast({ title: '无法打开预览页', icon: 'none' });
-  //           wx.removeStorageSync('previewImageData'); // 清理
-  //         }
-  //       });
-  //     } catch (e) {
-  //       console.error("存储预览数据失败:", e);
-  //       wx.showToast({ title: '准备数据时出错', icon: 'none' });
-  //     }
-  //   } else {
-  //     wx.showToast({ title: '无法生成预览图', icon: 'none' });
-  //   }
-  // },
+  
 
   // 新增：生成预览图并返回临时路径
   async _generatePreviewImage(): Promise<{ tempFilePath: string; width: number; height: number; usedColors: string[] } | null> {
@@ -952,13 +914,6 @@ Page({
         }, 100);
       });
     }).exec();
-  },
-
-  // 背景容差调整
-  onBackgroundToleranceChange(e: WechatMiniprogram.SliderChange) {
-    this.setData({
-      backgroundTolerance: e.detail.value
-    });
   },
 
   // 添加到Page对象中，与其他方法并列
