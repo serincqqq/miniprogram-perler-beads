@@ -3,7 +3,7 @@
 <view class="page-container" style="padding-top: {{statusBarHeight + navBarHeight}}px;">
   <view class="zoom-controls">
     <button size="mini" bindtap="zoomOut" disabled="{{zoomLevel <= minZoom}}">-</button>
-    <text>缩放: {{displayImageScale}}倍</text>
+    <text>缩放</text>
     <button size="mini" bindtap="zoomIn" disabled="{{zoomLevel >= maxZoom}}">+</button>
   </view>
   <scroll-view scroll-x="true" scroll-y="true" class="preview-scroll-view" style="height: {{scrollViewHeight}}px;">

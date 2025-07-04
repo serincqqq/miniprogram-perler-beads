@@ -502,174 +502,102 @@ Page({
       Math.pow(rgb1.b - rgb2.b, 2)
     );
   },
-  async test() {
-    wx.showLoading({ title: '生成中...' });
-    const processedData = await this._processImageToGrid();
 
+  // 新增：可复用的核心绘制函数，负责将处理后的数据绘制成图片并返回路径
+  async _drawGridToTempPath(processedData: any): Promise<string | null> {
+    const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol } = processedData;
+    const CELL_SIZE_PX = 40; // 统一格子尺寸
+
+    const canvasWidth = (maxGridCol + 1) * CELL_SIZE_PX;
+    const canvasHeight = (maxGridRow + 1) * CELL_SIZE_PX;
+
+    // @ts-ignore
+    const canvasNode = wx.createOffscreenCanvas({ type: '2d', width: canvasWidth, height: canvasHeight });
+    const ctx = canvasNode.getContext('2d');
+    if (!ctx) {
+      console.error("无法创建离屏画布");
+      return null;
+    }
+
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    const fontSize = Math.max(8, Math.floor(CELL_SIZE_PX * 0.4));
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (let r = 0; r <= maxGridRow; r++) {
+      for (let c = 0; c <= maxGridCol; c++) {
+        const cell = cellGrid[r]?.[c];
+        if (!cell || cell.isBackground) continue;
+
+        const x = c * CELL_SIZE_PX;
+        const y = r * CELL_SIZE_PX;
+
+        const hex = (beadPaletteData as any)[cell.finalColorCode] || '#CCCCCC';
+        ctx.fillStyle = hex;
+        ctx.fillRect(x, y, CELL_SIZE_PX, CELL_SIZE_PX);
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)'; // 使用浅色描边，效果更好
+        ctx.strokeRect(x, y, CELL_SIZE_PX, CELL_SIZE_PX);
+
+        const rgb = paletteRgbMap[cell.finalColorCode] || this.hexToRgb(hex);
+        const brightness = rgb ? (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000 : 0;
+        ctx.fillStyle = brightness > 128 ? 'black' : 'white';
+        ctx.fillText(cell.finalColorCode, x + CELL_SIZE_PX / 2, y + CELL_SIZE_PX / 2);
+      }
+    }
+    
+    try {
+      const { tempFilePath } = await wx.canvasToTempFilePath({ canvas: canvasNode });
+      return tempFilePath;
+    } catch (e) {
+      console.error("Canvas转图片失败:", e);
+      return null;
+    }
+  },
+
+  // 修改 test 方法，使其调用公共函数
+  async test() {
+    wx.showLoading({ title: '生成预览中...' });
+    const processedData = await this._processImageToGrid();
     if (!processedData) {
       wx.hideLoading();
       wx.showToast({ title: '图像处理失败', icon: 'none' });
       return;
     }
 
-    const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol } = processedData;
-    const EXPORT_CELL_SIZE_PX = 40;
+    const tempFilePath = await this._drawGridToTempPath(processedData);
+    wx.hideLoading();
 
-    const numExportCols = maxGridCol + 1;
-    const numExportRows = maxGridRow + 1;
-    const exportCanvasTotalWidth = numExportCols * EXPORT_CELL_SIZE_PX;
-    const exportCanvasTotalHeight = numExportRows * EXPORT_CELL_SIZE_PX;
-
-    // @ts-ignore: Workaround for miniprogram typings
-    const exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: exportCanvasTotalWidth, height: exportCanvasTotalHeight });
-    const exportCtx = exportCanvasNode.getContext('2d');
-
-    if (!exportCtx) {
-      wx.hideLoading();
-      wx.showToast({ title: '创建导出画布失败', icon: 'none' });
-      return;
-    }
-
-    exportCtx.clearRect(0, 0, exportCanvasTotalWidth, exportCanvasTotalHeight);
-    exportCtx.font = '14px Arial';
-    exportCtx.textAlign = 'center';
-    exportCtx.textBaseline = 'middle';
-
-    for (let r = 0; r <= maxGridRow; r++) {
-      for (let c = 0; c <= maxGridCol; c++) {
-        const cell = cellGrid[r]?.[c];
-        if (!cell || cell.isBackground) continue;
-
-        const x = c * EXPORT_CELL_SIZE_PX;
-        const y = r * EXPORT_CELL_SIZE_PX;
-
-        const cellColorHex = (beadPaletteData as any)[cell.finalColorCode] || '#CCCCCC';
-        exportCtx.fillStyle = cellColorHex;
-        exportCtx.fillRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
-
-        exportCtx.strokeStyle = 'black';
-        exportCtx.strokeRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
-
-        const cellRgb = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 };
-        const brightness = (cellRgb.r * 299 + cellRgb.g * 587 + cellRgb.b * 114) / 1000;
-        exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
-        exportCtx.fillText(cell.finalColorCode, x + EXPORT_CELL_SIZE_PX / 2, y + EXPORT_CELL_SIZE_PX / 2);
-      }
-    }
-    wx.canvasToTempFilePath({
-      canvas: exportCanvasNode,
-      success: (res) => {
-        wx.hideLoading();
-
-        if (res.tempFilePath) {
-          try {
-            // 使用 Storage 传递大数据
-            const { imageData, usedColors } = processedData;
-            const dataForPreview = {
-              imageData: imageData,
-              usedColors: usedColors,
-              tempFilePath: res.tempFilePath,
-              width: this.data.canvasWidth,
-              height: this.data.canvasHeight
-            };
-            wx.setStorageSync('previewImageData', dataForPreview);
-            wx.navigateTo({
-              url: '/pages/preview/index',
-              fail: (err) => {
-                console.error("跳转预览页失败:", err);
-                wx.showToast({ title: '无法打开预览页', icon: 'none' });
-                wx.removeStorageSync('previewImageData'); // 清理
-              }
-            });
-          } catch (e) {
-            console.error("存储预览数据失败:", e);
-            wx.showToast({ title: '准备数据时出错', icon: 'none' });
+    if (tempFilePath) {
+      try {
+        const { imageData, usedColors, maxGridCol, maxGridRow } = processedData;
+        const CELL_SIZE_PX = 40;
+        const dataForPreview = {
+          imageData,
+          usedColors,
+          tempFilePath,
+          width: (maxGridCol + 1) * CELL_SIZE_PX,
+          height: (maxGridRow + 1) * CELL_SIZE_PX,
+        };
+        wx.setStorageSync('previewImageData', dataForPreview);
+        wx.navigateTo({
+          url: '/pages/preview/index',
+          fail: (err) => {
+            console.error("跳转预览页失败:", err);
+            wx.showToast({ title: '无法打开预览页', icon: 'none' });
+            wx.removeStorageSync('previewImageData');
           }
-        } else {
-          wx.showToast({ title: '无法生成预览图', icon: 'none' });
-        }
-      },
-      fail: (err) => {
-        wx.hideLoading();
-        wx.showToast({ title: '导出失败: ' + err.errMsg, icon: 'none' });
+        });
+      } catch (e) {
+        console.error("存储预览数据失败:", e);
+        wx.showToast({ title: '准备数据时出错', icon: 'none' });
       }
-    });
+    } else {
+      wx.showToast({ title: '无法生成预览图', icon: 'none' });
+    }
   },
 
-
-  // 新增：生成预览图并返回临时路径
-  async _generatePreviewImage(): Promise<{ tempFilePath: string; width: number; height: number; usedColors: string[] } | null> {
-    const processedData = await this._processImageToGrid();
-    if (!processedData) {
-      return null;
-    }
-
-    const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol, colorSet } = processedData;
-    const PREVIEW_CELL_SIZE = 40; // 为预览图设置一个合适的分辨率
-    const canvasWidth = (maxGridCol + 1) * PREVIEW_CELL_SIZE;
-    const canvasHeight = (maxGridRow + 1) * PREVIEW_CELL_SIZE;
-
-    // @ts-ignore: Workaround for miniprogram typings
-    const previewCanvas = wx.createOffscreenCanvas({ type: '2d', width: canvasWidth, height: canvasHeight });
-    const previewCtx = previewCanvas.getContext('2d');
-
-    if (!previewCtx) {
-      console.error("无法创建预览图离屏画布");
-      return null;
-    }
-
-    previewCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-    const fontSize = Math.floor(PREVIEW_CELL_SIZE * 0.4);
-    if (fontSize > 5) {
-      previewCtx.font = `${fontSize}px Arial`;
-      previewCtx.textAlign = 'center';
-      previewCtx.textBaseline = 'middle';
-    }
-
-    for (let r = 0; r <= maxGridRow; r++) {
-      for (let c = 0; c <= maxGridCol; c++) {
-        const cell = cellGrid[r]?.[c];
-        if (!cell || cell.isBackground) continue;
-
-        const x = c * PREVIEW_CELL_SIZE;
-        const y = r * PREVIEW_CELL_SIZE;
-
-        const cellColorHex = (beadPaletteData as any)[cell.finalColorCode] || '#CCCCCC';
-        previewCtx.fillStyle = cellColorHex;
-        previewCtx.fillRect(x, y, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE);
-
-        previewCtx.strokeStyle = 'rgba(0,0,0,0.2)';
-        previewCtx.strokeRect(x, y, PREVIEW_CELL_SIZE, PREVIEW_CELL_SIZE);
-
-        if (fontSize > 5) {
-          const cellRgb = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 };
-          const brightness = (cellRgb.r * 299 + cellRgb.g * 587 + cellRgb.b * 114) / 1000;
-          previewCtx.fillStyle = brightness > 128 ? 'black' : 'white';
-          previewCtx.fillText(cell.finalColorCode, x + PREVIEW_CELL_SIZE / 2, y + PREVIEW_CELL_SIZE / 2);
-        }
-      }
-    }
-    return new Promise((resolve) => {
-      wx.canvasToTempFilePath({
-        canvas: previewCanvas,
-        fileType: 'png',
-        success: (res) => {
-          resolve({
-            tempFilePath: res.tempFilePath,
-            width: canvasWidth,
-            height: canvasHeight,
-            usedColors: [...colorSet]
-          });
-        },
-        fail: (err) => {
-          console.error("生成预览临时文件失败:", err);
-          resolve(null);
-        }
-      });
-    });
-  },
-
-  // 核心处理逻辑，提取为一个可重用的私有方法
+  // 核心处理逻辑 (保持不变)
   async _processImageToGrid() {
     if (!this.ctx || !this.canvas || !this.data.imagePath) {
       return null;
@@ -816,6 +744,7 @@ Page({
     };
   },
 
+  // 修改 exportImg 方法，使其也调用公共函数
   async exportImg() {
     wx.showLoading({ title: '生成中...' });
     const processedData = await this._processImageToGrid();
@@ -826,66 +755,18 @@ Page({
       return;
     }
 
-    const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol } = processedData;
-    const EXPORT_CELL_SIZE_PX = 40;
+    const tempFilePath = await this._drawGridToTempPath(processedData);
+    wx.hideLoading();
 
-    const numExportCols = maxGridCol + 1;
-    const numExportRows = maxGridRow + 1;
-    const exportCanvasTotalWidth = numExportCols * EXPORT_CELL_SIZE_PX;
-    const exportCanvasTotalHeight = numExportRows * EXPORT_CELL_SIZE_PX;
-
-    // @ts-ignore: Workaround for miniprogram typings
-    const exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: exportCanvasTotalWidth, height: exportCanvasTotalHeight });
-    const exportCtx = exportCanvasNode.getContext('2d');
-
-    if (!exportCtx) {
-      wx.hideLoading();
-      wx.showToast({ title: '创建导出画布失败', icon: 'none' });
-      return;
+    if (tempFilePath) {
+      wx.saveImageToPhotosAlbum({
+        filePath: tempFilePath,
+        success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
+        fail: (err) => wx.showToast({ title: '保存失败: ' + err.errMsg, icon: 'none' })
+      });
+    } else {
+      wx.showToast({ title: '生成图片失败', icon: 'none' });
     }
-
-    exportCtx.clearRect(0, 0, exportCanvasTotalWidth, exportCanvasTotalHeight);
-    exportCtx.font = '14px Arial';
-    exportCtx.textAlign = 'center';
-    exportCtx.textBaseline = 'middle';
-
-    for (let r = 0; r <= maxGridRow; r++) {
-      for (let c = 0; c <= maxGridCol; c++) {
-        const cell = cellGrid[r]?.[c];
-        if (!cell || cell.isBackground) continue;
-
-        const x = c * EXPORT_CELL_SIZE_PX;
-        const y = r * EXPORT_CELL_SIZE_PX;
-
-        const cellColorHex = (beadPaletteData as any)[cell.finalColorCode] || '#CCCCCC';
-        exportCtx.fillStyle = cellColorHex;
-        exportCtx.fillRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
-
-        exportCtx.strokeStyle = 'black';
-        exportCtx.strokeRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
-
-        const cellRgb = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 };
-        const brightness = (cellRgb.r * 299 + cellRgb.g * 587 + cellRgb.b * 114) / 1000;
-        exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
-        exportCtx.fillText(cell.finalColorCode, x + EXPORT_CELL_SIZE_PX / 2, y + EXPORT_CELL_SIZE_PX / 2);
-      }
-    }
-
-    wx.canvasToTempFilePath({
-      canvas: exportCanvasNode,
-      success: (res) => {
-        wx.hideLoading();
-        wx.saveImageToPhotosAlbum({
-          filePath: res.tempFilePath,
-          success: () => wx.showToast({ title: '图片已保存', icon: 'success' }),
-          fail: (err) => wx.showToast({ title: '保存失败: ' + err.errMsg, icon: 'none' })
-        });
-      },
-      fail: (err) => {
-        wx.hideLoading();
-        wx.showToast({ title: '导出失败: ' + err.errMsg, icon: 'none' });
-      }
-    });
   },
 
   onLoad() {
