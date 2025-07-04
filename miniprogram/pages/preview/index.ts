@@ -17,49 +17,37 @@ Page({
    * Page initial data
    */
   data: {
-    newColor: '',
     statusBarHeight: 0,
     navBarHeight: 44,
-    scrollViewHeight: 500,
+    scrollViewHeight: 400,
 
     tempFilePath: '',
-    originalImageWidth: 0,
-    displayImageScale: 1.2,
+    displayImageWidth: 200,
+    displayImageHeight: 200,
 
-    zoomLevel: 1.0,
-    minZoom: 0.2, // 最小缩放比例
-    maxZoom: 3.0, // 最大缩放比例
-    zoomPercent: '100',
-
-    // Color palette related data
+    imageData: [] as any[][],
     usedColors: [] as ColorInfo[],
-    availableColors: [] as ColorInfo[],
+    colorReplacements: {} as Record<string, string>,
     showReplaceDialog: false,
     selectedColor: null as ColorInfo | null,
-    colorReplacements: {} as Record<string, string>, // 存储颜色替换映射
-    imageData: [], // <--- 给一个明确的初始值
+    newColor: '',
   },
 
   /**
    * Lifecycle function--Called when page load
    */
   onLoad() {
-    // 1. 设置UI尺寸
     const sysInfo = wx.getSystemInfoSync();
     const navHeight = (sysInfo.statusBarHeight || 20) + this.data.navBarHeight;
-    const zoomControlsHeight = 50; // 估算的缩放控件高度
-    const colorPaletteHeight = 160; // 估算的调色板高度
+    const colorPaletteHeight = 160; // 估算调色板和导出按钮总高度
 
     this.setData({
       statusBarHeight: sysInfo.statusBarHeight || 20,
-      scrollViewHeight: sysInfo.windowHeight - navHeight - zoomControlsHeight - colorPaletteHeight
+      scrollViewHeight: sysInfo.windowHeight - navHeight - colorPaletteHeight
     });
 
-    // 2. 从 Storage 获取数据
     const sourceData = wx.getStorageSync('previewImageData');
-    
-    // 3. 严格校验获取到的数据
-    if (!sourceData || !Array.isArray(sourceData.imageData) || sourceData.imageData.length === 0) {
+    if (!sourceData || !sourceData.imageData || sourceData.imageData.length === 0) {
       wx.showToast({
         title: '加载预览数据失败',
         icon: 'none',
@@ -70,39 +58,25 @@ Page({
       }, 2000);
       return;
     }
-
-    // 4. 备份数据 (如果需要的话)
     wx.setStorageSync('previewImageData_backup', sourceData);
 
-    // 5. 解析并准备用于 setData 的数据
     const usedColors = (sourceData.usedColors || []).map((code: string) => ({
       code,
       hex: beadPalette[code],
     })).filter((color: { hex: string; }) => color.hex);
 
-    const availableColors = Object.entries(beadPalette).map(([code, hex]) => ({
-      code,
-      hex: hex as string
-    }));
+    const displayWidth = sourceData.width * 1.2;
+    const displayHeight = sourceData.height * 1.2;
 
-    const initialZoom = sourceData.width ? (sysInfo.windowWidth / sourceData.width) : 1.0;
-
-    // 6. 一次性将所有数据更新到 this.data
     this.setData({
       tempFilePath: sourceData.tempFilePath || '',
-      originalImageWidth: sourceData.width || sysInfo.windowWidth,
-      zoomLevel: initialZoom,
-      usedColors,
-      availableColors,
-      imageData: sourceData.imageData, // <--- 核心修复点：直接使用获取到的 imageData
+      displayImageWidth: displayWidth,
+      displayImageHeight: displayHeight,
+      imageData: sourceData.imageData,
+      usedColors: usedColors,
       colorReplacements: {},
     });
-    
-    console.log('onLoad 之后, this.data.imageData:', this.data.imageData); // 添加调试日志
 
-    this.updateZoomPercent();
-
-    // 7. 监听异步生成的预览图
     if (!this.data.tempFilePath) {
       this.watchPreviewImage();
     }
@@ -157,30 +131,19 @@ Page({
 
   },
 
-  zoomIn() {
-    this.setData({
-      displayImageScale: this.data.displayImageScale + 0.2,
-    });
-  },
-
-  zoomOut() {
-    this.setData({
-      displayImageScale: this.data.displayImageScale - 0.2,
-    });
-  },
-
-  updateZoom(newZoom: number) {
-    this.setData({
-      zoomLevel: newZoom,
-      displayImageScale: this.data.originalImageWidth * newZoom,
-    });
-    this.updateZoomPercent();
-  },
-
-  updateZoomPercent() {
-    this.setData({
-      zoomPercent: (this.data.zoomLevel * 100).toFixed(0),
-    });
+  watchPreviewImage() {
+    const interval = setInterval(() => {
+      const updatedData = wx.getStorageSync('previewImageData');
+      if (updatedData && updatedData.tempFilePath) {
+        clearInterval(interval);
+        this.setData({
+          tempFilePath: updatedData.tempFilePath,
+          displayImageWidth: updatedData.width * 1.2,
+          displayImageHeight: updatedData.height * 1.2,
+        });
+      }
+    }, 500);
+    setTimeout(() => clearInterval(interval), 15000);
   },
 
   // 颜色替换相关方法
@@ -219,7 +182,7 @@ Page({
       showReplaceDialog: false,
       selectedColor: null,
     });
-    
+
     wx.showToast({ title: `颜色 ${codeToDelete} 已删除`, icon: 'none' });
   },
   onConfirmReplace() {
@@ -265,9 +228,9 @@ Page({
 
     // 更新 imageData，将旧色号替换为新色号
     const newImageData = this.data.imageData.map(row => {
-        return row.map(cell => {
-            return cell === selectedColor.code ? newColorCode : cell;
-        });
+      return row.map(cell => {
+        return cell === selectedColor.code ? newColorCode : cell;
+      });
     });
 
     // 一次性更新所有数据并关闭弹窗

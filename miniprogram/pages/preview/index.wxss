@@ -28,29 +28,21 @@
 }
 
 .preview-scroll-view {
-  flex: 1;
-  width: 100%;
-  background: #fff;
-  /* 占据剩余空间 */
-  display: flex;
-  border-top: 1px solid #eee;
-  border-bottom: 1px solid #eee;
+  flex: 1; /* 占据所有剩余空间 */
   background-color: #f0f0f0;
-  /* 给滚动区域一个背景色，以区分图片 */
+  width: 100%; /* 确保 scroll-view 自身宽度是100% */
 }
 
 .image-wrapper {
-  display: flex;
-  justify-content: center;
-  min-height: 100%;
-  padding: 20rpx;
+  /* 让 wrapper 的尺寸由内部的 image 决定 */
+  /* display: flex and a large image will make the wrapper expand */
+  display: inline-block; /* 允许 wrapper 尺寸超过 scroll-view */
 }
 
 .preview-image {
-  width: 100%;
-  height: auto;
-  transform-origin: center top;
-  transition: transform 0.3s ease;
+  /* 尺寸由 style 动态设置 */
+  /* width 和 height 会由 ts 文件设置 */
+  display: block; /* 避免 image 底部有小间隙 */
 }
 
 /* Color Palette Styles */

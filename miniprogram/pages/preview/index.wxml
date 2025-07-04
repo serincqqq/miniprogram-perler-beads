@@ -1,14 +1,9 @@
 <!-- pages/preview/index.wxml -->
 <navigation-bar title="预览" back="{{true}}" color="black" background="#FFF"></navigation-bar>
-<view class="page-container" style="padding-top: {{statusBarHeight + navBarHeight}}px;">
-  <view class="zoom-controls">
-    <button size="mini" bindtap="zoomOut" disabled="{{zoomLevel <= minZoom}}">-</button>
-    <text>缩放</text>
-    <button size="mini" bindtap="zoomIn" disabled="{{zoomLevel >= maxZoom}}">+</button>
-  </view>
-  <scroll-view scroll-x="true" scroll-y="true" class="preview-scroll-view" style="height: {{scrollViewHeight}}px;">
+<view class="page-container" style="padding-top: {{navBarHeight}}rpx;">
+  <scroll-view scroll-x="true" scroll-y="true" class="preview-scroll-view" style="height: {{scrollViewHeight}}rpx;">
     <view class="image-wrapper">
-      <image class="preview-image" src="{{tempFilePath}}" mode="widthFix" style="transform: scale({{displayImageScale}})" show-menu-by-longpress="{{true}}"></image>
+      <image class="preview-image" src="{{tempFilePath}}" mode="aspectFit" style="width: {{displayImageWidth}}rpx; height: {{displayImageHeight}}rpx;" show-menu-by-longpress="{{true}}"></image>
     </view>
   </scroll-view>
   <!-- Color Palette Section -->
