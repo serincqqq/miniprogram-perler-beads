@@ -33,6 +33,7 @@
       <input class="replacement-input" placeholder="新色号" bindinput="onNewColorInput" value="{{newColorCode}}" maxlength="5" />
     </view>
     <view class="dialog-buttons">
+      <button class="dialog-button delete" bindtap="onDeleteColor">删除</button>
       <button class="dialog-button" type="primary" bindtap="onConfirmReplace">确定</button>
       <button class="dialog-button" bindtap="onCancelReplace">取消</button>
     </view>

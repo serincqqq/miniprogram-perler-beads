@@ -151,7 +151,7 @@
 
 .dialog-buttons {
   display: flex;
-  gap: 30rpx;
+  gap: 20rpx;
   margin-top: 50rpx;
 }
 
@@ -160,7 +160,12 @@
   margin: 0;
 }
 
-.dialog-buttons .dialog-button:not([type="primary"]) {
+.dialog-buttons .dialog-button.delete {
+  background-color: #f56c6c;
+  color: white;
+}
+
+.dialog-buttons .dialog-button:not([type="primary"]):not(.delete) {
   background-color: #f2f2f2;
   color: #333;
 }

@@ -196,6 +196,32 @@ Page({
       newColorCode: e.detail.value.toUpperCase().trim()
     });
   },
+  onDeleteColor() {
+    const { selectedColor, imageData, usedColors } = this.data;
+    if (!selectedColor) return;
+
+    const codeToDelete = selectedColor.code;
+
+    // 1. 更新 imageData，将被删除的色号替换为 null
+    const newImageData = imageData.map(row => {
+      return row.map(cell => {
+        return cell === codeToDelete ? null : cell;
+      });
+    });
+
+    // 2. 从 usedColors 列表中移除该颜色
+    const newUsedColors = usedColors.filter(color => color.code !== codeToDelete);
+
+    // 3. 更新数据并关闭弹窗
+    this.setData({
+      imageData: newImageData,
+      usedColors: newUsedColors,
+      showReplaceDialog: false,
+      selectedColor: null,
+    });
+    
+    wx.showToast({ title: `颜色 ${codeToDelete} 已删除`, icon: 'none' });
+  },
   onConfirmReplace() {
     const { selectedColor, newColorCode, colorReplacements, usedColors } = this.data;
 
@@ -237,13 +263,21 @@ Page({
       }
     }
 
-    // 4. 一次性更新所有数据并关闭弹窗
+    // 更新 imageData，将旧色号替换为新色号
+    const newImageData = this.data.imageData.map(row => {
+        return row.map(cell => {
+            return cell === selectedColor.code ? newColorCode : cell;
+        });
+    });
+
+    // 一次性更新所有数据并关闭弹窗
     this.setData({
+      imageData: newImageData, // 同时更新 imageData
       colorReplacements: newReplacements,
-      usedColors: newUsedColors, // 更新色板显示
+      usedColors: newUsedColors,
       showReplaceDialog: false,
       selectedColor: null,
-      newColorCode: '' // 重置输入框
+      newColorCode: ''
     });
   },
 
