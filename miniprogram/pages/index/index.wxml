@@ -67,7 +67,7 @@
     </view>
     <view class="button-container">
       <button class="control-button" bindtap="exportImg">导出</button>
-      <button class="control-button" bindtap="previewImg">预览和调整</button>
+      <button class="control-button" bindtap="test">预览和调整</button>
     </view>
   </view>
   <!-- 在页面底部添加校准弹窗 -->

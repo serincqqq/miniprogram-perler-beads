@@ -502,46 +502,138 @@ Page({
       Math.pow(rgb1.b - rgb2.b, 2)
     );
   },
+  async test() {
+    wx.showLoading({ title: '生成中...' });
+    const processedData = await this._processImageToGrid();
 
-  // 更新 previewImg, 让它生成图片并传递
-  async previewImg() {
-    if (!this.data.imagePath) {
-      wx.showToast({ title: '请先选择并校准图片', icon: 'none' });
+    if (!processedData) {
+      wx.hideLoading();
+      wx.showToast({ title: '图像处理失败', icon: 'none' });
       return;
     }
-    wx.showLoading({ title: '生成预览图...' });
 
-    const processedData = await this._processImageToGrid();
-    wx.hideLoading();
+    const { cellGrid, paletteRgbMap, beadPaletteData, maxGridRow, maxGridCol } = processedData;
+    const EXPORT_CELL_SIZE_PX = 40;
 
-    if (processedData) {
-      try {
-        // 使用 Storage 传递大数据
-        const { imageData, usedColors } = processedData;
-        const dataForPreview = {
-          imageData: imageData,
-          usedColors: usedColors,
-          tempFilePath: this.data.tempFilePath,
-          width: this.data.canvasWidth,
-          height: this.data.canvasHeight
-        };
-        wx.setStorageSync('previewImageData', dataForPreview);
-        wx.navigateTo({
-          url: '/pages/preview/index',
-          fail: (err) => {
-            console.error("跳转预览页失败:", err);
-            wx.showToast({ title: '无法打开预览页', icon: 'none' });
-            wx.removeStorageSync('previewImageData'); // 清理
-          }
-        });
-      } catch (e) {
-        console.error("存储预览数据失败:", e);
-        wx.showToast({ title: '准备数据时出错', icon: 'none' });
-      }
-    } else {
-      wx.showToast({ title: '无法生成预览图', icon: 'none' });
+    const numExportCols = maxGridCol + 1;
+    const numExportRows = maxGridRow + 1;
+    const exportCanvasTotalWidth = numExportCols * EXPORT_CELL_SIZE_PX;
+    const exportCanvasTotalHeight = numExportRows * EXPORT_CELL_SIZE_PX;
+
+    // @ts-ignore: Workaround for miniprogram typings
+    const exportCanvasNode = wx.createOffscreenCanvas({ type: '2d', width: exportCanvasTotalWidth, height: exportCanvasTotalHeight });
+    const exportCtx = exportCanvasNode.getContext('2d');
+
+    if (!exportCtx) {
+      wx.hideLoading();
+      wx.showToast({ title: '创建导出画布失败', icon: 'none' });
+      return;
     }
+
+    exportCtx.clearRect(0, 0, exportCanvasTotalWidth, exportCanvasTotalHeight);
+    exportCtx.font = '14px Arial';
+    exportCtx.textAlign = 'center';
+    exportCtx.textBaseline = 'middle';
+
+    for (let r = 0; r <= maxGridRow; r++) {
+      for (let c = 0; c <= maxGridCol; c++) {
+        const cell = cellGrid[r]?.[c];
+        if (!cell || cell.isBackground) continue;
+
+        const x = c * EXPORT_CELL_SIZE_PX;
+        const y = r * EXPORT_CELL_SIZE_PX;
+
+        const cellColorHex = (beadPaletteData as any)[cell.finalColorCode] || '#CCCCCC';
+        exportCtx.fillStyle = cellColorHex;
+        exportCtx.fillRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
+
+        exportCtx.strokeStyle = 'black';
+        exportCtx.strokeRect(x, y, EXPORT_CELL_SIZE_PX, EXPORT_CELL_SIZE_PX);
+
+        const cellRgb = paletteRgbMap[cell.finalColorCode] || { r: 204, g: 204, b: 204 };
+        const brightness = (cellRgb.r * 299 + cellRgb.g * 587 + cellRgb.b * 114) / 1000;
+        exportCtx.fillStyle = brightness > 128 ? 'black' : 'white';
+        exportCtx.fillText(cell.finalColorCode, x + EXPORT_CELL_SIZE_PX / 2, y + EXPORT_CELL_SIZE_PX / 2);
+      }
+    }
+    wx.canvasToTempFilePath({
+      canvas: exportCanvasNode,
+      success: (res) => {
+        wx.hideLoading();
+
+        if (res.tempFilePath) {
+          try {
+            // 使用 Storage 传递大数据
+            const { imageData, usedColors } = processedData;
+            const dataForPreview = {
+              imageData: imageData,
+              usedColors: usedColors,
+              tempFilePath: res.tempFilePath,
+              width: this.data.canvasWidth,
+              height: this.data.canvasHeight
+            };
+            wx.setStorageSync('previewImageData', dataForPreview);
+            wx.navigateTo({
+              url: '/pages/preview/index',
+              fail: (err) => {
+                console.error("跳转预览页失败:", err);
+                wx.showToast({ title: '无法打开预览页', icon: 'none' });
+                wx.removeStorageSync('previewImageData'); // 清理
+              }
+            });
+          } catch (e) {
+            console.error("存储预览数据失败:", e);
+            wx.showToast({ title: '准备数据时出错', icon: 'none' });
+          }
+        } else {
+          wx.showToast({ title: '无法生成预览图', icon: 'none' });
+        }
+      },
+      fail: (err) => {
+        wx.hideLoading();
+        wx.showToast({ title: '导出失败: ' + err.errMsg, icon: 'none' });
+      }
+    });
   },
+  // 更新 previewImg, 让它生成图片并传递
+  // async previewImg() {
+  //   if (!this.data.imagePath) {
+  //     wx.showToast({ title: '请先选择并校准图片', icon: 'none' });
+  //     return;
+  //   }
+  //   wx.showLoading({ title: '生成预览图...' });
+
+  //   const processedData = await this._processImageToGrid();
+  //   wx.hideLoading();
+
+  //   if (processedData) {
+  //     try {
+  //       // 使用 Storage 传递大数据
+  //       const { imageData, usedColors } = processedData;
+  //       const dataForPreview = {
+  //         imageData: imageData,
+  //         usedColors: usedColors,
+  //         tempFilePath: this.data.tempFilePath,
+  //         width: this.data.canvasWidth,
+  //         height: this.data.canvasHeight
+  //       };
+  //       wx.setStorageSync('previewImageData', dataForPreview);
+  //       wx.navigateTo({
+  //         url: '/pages/preview/index',
+  //         fail: (err) => {
+  //           console.error("跳转预览页失败:", err);
+  //           wx.showToast({ title: '无法打开预览页', icon: 'none' });
+  //           wx.removeStorageSync('previewImageData'); // 清理
+  //         }
+  //       });
+  //     } catch (e) {
+  //       console.error("存储预览数据失败:", e);
+  //       wx.showToast({ title: '准备数据时出错', icon: 'none' });
+  //     }
+  //   } else {
+  //     wx.showToast({ title: '无法生成预览图', icon: 'none' });
+  //   }
+  // },
 
   // 新增：生成预览图并返回临时路径
   async _generatePreviewImage(): Promise<{ tempFilePath: string; width: number; height: number; usedColors: string[] } | null> {
