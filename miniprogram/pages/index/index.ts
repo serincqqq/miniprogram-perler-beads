@@ -43,9 +43,6 @@ Page({
     topAxis: 30,
     bottomAxis: 80,
     isMovingAxis: '',
-
-    // 移除手动背景选择模式相关数据
-    backgroundTolerance: 30,
   },
 
   // Canvas 和 context 作为组件实例的属性

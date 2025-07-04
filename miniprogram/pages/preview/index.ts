@@ -278,7 +278,6 @@ Page({
   // 导出功能
   async onExport() {
     const { imageData, colorReplacements } = this.data;
-    console.log('dd', imageData)
     if (!imageData || !Array.isArray(imageData) || imageData.length === 0 || !Array.isArray(imageData[0]) || imageData[0].length === 0) {
       wx.showToast({ title: '图像数据无效', icon: 'none' });
       return;

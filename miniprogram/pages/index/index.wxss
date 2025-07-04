@@ -64,28 +64,7 @@
   /* 添加阴影 */
 }
 
-/* .perler-img{
-  background-color: #555;
-} */
-.setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
 
-.setting-item:last-child {
-  border-bottom: none;
-}
-
-.setting-label {
-  font-size: 14px;
-  color: #333;
-  margin-right: 10px;
-  flex-shrink: 0;
-}
 
 .setting-control {
   flex-grow: 1;

@@ -96,9 +96,4 @@
       </view>
     </view>
   </view>
-  <!-- 可选：添加背景容差滑块控制 -->
-  <view class="setting-item" wx:if="{{imagePath}}">
-    <text class="setting-label">背景容差:</text>
-    <slider min="5" max="100" value="{{backgroundTolerance}}" show-value bindchange="onBackgroundToleranceChange" />
-  </view>
 </view>
